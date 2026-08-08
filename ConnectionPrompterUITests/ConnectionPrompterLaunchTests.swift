@@ -2,11 +2,13 @@ import XCTest
 
 @MainActor
 final class ConnectionPrompterLaunchTests: XCTestCase {
-    func testLaunchesIntoSingleDocumentEditor() {
+    func testLaunchesIntoDocumentLibraryEditor() {
         let app = makeApp()
         app.launch()
         app.activate()
 
+        XCTAssertTrue(app.descendants(matching: .any)["文稿列表"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["新建文稿"].exists)
         XCTAssertTrue(app.textFields["文稿标题"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["进入主持"].exists)
         XCTAssertTrue(app.textViews["文稿正文"].exists)
@@ -52,6 +54,8 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["主持显示"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.sliders["字号"].exists)
         XCTAssertTrue(app.sliders["每页行数"].exists)
+        XCTAssertTrue(app.sliders["背景透明度"].exists)
+        XCTAssertTrue(app.sliders["自动滚动速度"].exists)
         app.typeKey(.escape, modifierFlags: [])
 
         app.buttons["进入主持"].click()
@@ -80,6 +84,28 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         XCTAssertTrue((app.textViews["文稿正文"].value as? String)?.contains("第一段内容") == true)
     }
 
+    func testCreatesAndSwitchesBetweenSavedDocuments() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        replaceText(in: app.textFields["文稿标题"], with: "First Script")
+        replaceText(in: app.textViews["文稿正文"], with: "第一份正文")
+
+        app.buttons["新建文稿"].firstMatch.click()
+        replaceText(in: app.textFields["文稿标题"], with: "Second Script")
+        replaceText(in: app.textViews["文稿正文"], with: "第二份正文")
+
+        let firstDocument = app.staticTexts["First Script"].firstMatch
+        XCTAssertTrue(firstDocument.waitForExistence(timeout: 3))
+        firstDocument.click()
+
+        XCTAssertEqual(app.textFields["文稿标题"].value as? String, "First Script")
+        XCTAssertTrue(
+            (app.textViews["文稿正文"].value as? String)?.contains("第一份正文") == true
+        )
+    }
+
     private func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
@@ -93,5 +119,16 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func replaceText(in element: XCUIElement, with text: String) {
+        XCTAssertTrue(element.waitForExistence(timeout: 3))
+        if element.elementType == .textView {
+            element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).click()
+        } else {
+            element.click()
+        }
+        element.typeKey("a", modifierFlags: .command)
+        element.typeText(text)
     }
 }

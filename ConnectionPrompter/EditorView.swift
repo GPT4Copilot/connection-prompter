@@ -8,6 +8,17 @@ struct EditorView: View {
     private var state: AppState { coordinator.state }
 
     var body: some View {
+        NavigationSplitView {
+            DocumentListView(coordinator: coordinator)
+        } detail: {
+            documentEditor
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(minWidth: 980, minHeight: 600)
+        .onAppear { coordinator.connectIfNeeded() }
+    }
+
+    private var documentEditor: some View {
         VStack(spacing: 0) {
             editorToolbar
             Divider().opacity(0.55)
@@ -72,18 +83,16 @@ struct EditorView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        .frame(minWidth: 820, minHeight: 600)
-        .onAppear { coordinator.connectIfNeeded() }
     }
 
     private var editorToolbar: some View {
         HStack(spacing: 9) {
-            Image(systemName: "text.document")
+            Image(systemName: "doc.text")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Color.accentColor)
                 .accessibilityHidden(true)
 
-            Text("Connection Prompter")
+            Text("编辑文稿")
                 .font(.system(size: 14, weight: .semibold))
 
             Spacer()
