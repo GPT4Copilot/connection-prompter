@@ -8,6 +8,13 @@ struct PresenterView: View {
 
     private var state: AppState { coordinator.state }
     private var style: EffectivePrompterStyle { state.preferences.effectiveStyle }
+    private var backgroundStyle: PresenterBackgroundStyle {
+        PresenterBackgroundStyle(
+            transparency: style.backgroundTransparency,
+            reduceTransparency: reduceTransparency,
+            blurEnabled: state.preferences.blurEnabled
+        )
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -26,9 +33,16 @@ struct PresenterView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(.white.opacity(0.14), lineWidth: 1)
+                .stroke(
+                    .white.opacity(0.14 * backgroundStyle.chromeOpacity),
+                    lineWidth: 1
+                )
         }
-        .shadow(color: .black.opacity(0.24), radius: 22, y: 10)
+        .shadow(
+            color: .black.opacity(0.24 * backgroundStyle.chromeOpacity),
+            radius: 22,
+            y: 10
+        )
         .onHover { hovering in
             if hovering {
                 showControls()
@@ -42,14 +56,12 @@ struct PresenterView: View {
         .accessibilityLabel("主持浮窗")
     }
 
-    @ViewBuilder
     private var background: some View {
-        if state.preferences.blurEnabled && !reduceTransparency {
+        ZStack {
             Rectangle()
                 .fill(.ultraThinMaterial)
-                .overlay(Color.black.opacity(style.backgroundOpacity))
-        } else {
-            Color.black.opacity(max(style.backgroundOpacity, 0.82))
+                .opacity(backgroundStyle.materialOpacity)
+            Color.black.opacity(backgroundStyle.blackFillOpacity)
         }
     }
 
@@ -104,11 +116,11 @@ struct PresenterView: View {
             controlButton("增大字号", systemImage: "textformat.size.larger") {
                 coordinator.adjustFontSize(by: 2)
             }
-            controlButton("降低背景", systemImage: "circle.lefthalf.filled") {
-                coordinator.adjustOpacity(by: -0.05)
+            controlButton("降低透明度", systemImage: "circle.fill") {
+                coordinator.adjustTransparency(by: -0.05)
             }
-            controlButton("提高背景", systemImage: "circle.fill") {
-                coordinator.adjustOpacity(by: 0.05)
+            controlButton("提高透明度", systemImage: "circle.lefthalf.filled") {
+                coordinator.adjustTransparency(by: 0.05)
             }
             separator
             controlButton(

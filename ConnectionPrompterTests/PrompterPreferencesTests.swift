@@ -4,18 +4,18 @@ import XCTest
 final class PrompterPreferencesTests: XCTestCase {
     func testPeopleViewTemporarilyOverridesPresentationWithoutChangingBaseValues() {
         var preferences = PrompterPreferences.standard
-        preferences.backgroundOpacity = 0.82
+        preferences.backgroundTransparency = 0.82
         preferences.maximumLines = 4
         preferences.peopleView = true
 
         XCTAssertEqual(preferences.effectiveStyle.panelWidth, 520)
         XCTAssertEqual(preferences.effectiveStyle.panelHeight, 140)
         XCTAssertEqual(preferences.effectiveStyle.maximumLines, 2)
-        XCTAssertEqual(preferences.effectiveStyle.backgroundOpacity, 0.45)
+        XCTAssertEqual(preferences.effectiveStyle.backgroundTransparency, 0.55)
 
         preferences.peopleView = false
 
-        XCTAssertEqual(preferences.effectiveStyle.backgroundOpacity, 0.82)
+        XCTAssertEqual(preferences.effectiveStyle.backgroundTransparency, 0.82)
         XCTAssertEqual(preferences.effectiveStyle.maximumLines, 4)
     }
 

@@ -206,8 +206,8 @@ private struct PrompterSettingsView: View {
                     .accessibilityLabel("每页行数")
             }
 
-            settingRow("背景透明度", value: "\(Int(state.preferences.backgroundOpacity * 100))%") {
-                Slider(value: opacityBinding, in: 0.25...0.95, step: 0.05)
+            settingRow("背景透明度", value: "\(Int(state.preferences.backgroundTransparency * 100))%") {
+                Slider(value: transparencyBinding, in: 0...1, step: 0.01)
                     .accessibilityLabel("背景透明度")
             }
 
@@ -253,9 +253,9 @@ private struct PrompterSettingsView: View {
         })
     }
 
-    private var opacityBinding: Binding<Double> {
-        Binding(get: { state.preferences.backgroundOpacity }, set: { value in
-            coordinator.updatePreferences { $0.backgroundOpacity = value }
+    private var transparencyBinding: Binding<Double> {
+        Binding(get: { state.preferences.backgroundTransparency }, set: { value in
+            coordinator.updatePreferences { $0.backgroundTransparency = value }
         })
     }
 

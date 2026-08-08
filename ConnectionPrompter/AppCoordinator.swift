@@ -74,9 +74,12 @@ final class AppCoordinator {
         }
     }
 
-    func adjustOpacity(by amount: Double) {
+    func adjustTransparency(by amount: Double) {
         updatePreferences {
-            $0.backgroundOpacity = min(max($0.backgroundOpacity + amount, 0.25), 0.95)
+            $0.backgroundTransparency = min(
+                max($0.backgroundTransparency + amount, 0),
+                1
+            )
         }
     }
 
