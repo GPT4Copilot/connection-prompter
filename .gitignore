@@ -1,7 +1,7 @@
 .DS_Store
 build/
 dist/
-DerivedData/
+DerivedData*/
 .worktrees/
 *.xcuserstate
 xcuserdata/

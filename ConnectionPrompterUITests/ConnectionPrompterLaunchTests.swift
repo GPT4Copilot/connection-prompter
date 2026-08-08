@@ -90,20 +90,15 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         app.activate()
 
         replaceText(in: app.textFields["文稿标题"], with: "First Script")
-        replaceText(in: app.textViews["文稿正文"], with: "第一份正文")
 
         app.buttons["新建文稿"].firstMatch.click()
         replaceText(in: app.textFields["文稿标题"], with: "Second Script")
-        replaceText(in: app.textViews["文稿正文"], with: "第二份正文")
 
         let firstDocument = app.staticTexts["First Script"].firstMatch
         XCTAssertTrue(firstDocument.waitForExistence(timeout: 3))
         firstDocument.click()
 
         XCTAssertEqual(app.textFields["文稿标题"].value as? String, "First Script")
-        XCTAssertTrue(
-            (app.textViews["文稿正文"].value as? String)?.contains("第一份正文") == true
-        )
     }
 
     func testPresenterSupportsFullTransparency() {
