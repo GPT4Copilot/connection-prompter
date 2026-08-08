@@ -5,6 +5,7 @@ struct PresenterView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var controlsVisible = true
     @State private var hideControlsTask: Task<Void, Never>?
+    @State private var lastTimelineDate: Date?
 
     private var state: AppState { coordinator.state }
     private var style: EffectivePrompterStyle { state.preferences.effectiveStyle }
@@ -65,44 +66,98 @@ struct PresenterView: View {
         }
     }
 
+    @ViewBuilder
     private var pageContent: some View {
-        Group {
-            if let page = state.currentPrompterPage {
-                VStack(
-                    alignment: state.preferences.alignment == .center ? .center : .leading,
-                    spacing: 2
-                ) {
-                    ForEach(Array(page.lines.enumerated()), id: \.offset) { _, line in
+        if state.prompterTrack.lines.isEmpty {
+            VStack(spacing: 7) {
+                Image(systemName: "text.cursor")
+                    .font(.system(size: 22))
+                Text("文稿还是空的")
+                    .font(.system(size: 17, weight: .semibold))
+                Text("返回编辑器，粘贴你的会议讲稿")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            .foregroundStyle(.white.opacity(0.8))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            continuousTrack
+        }
+    }
+
+    private var continuousTrack: some View {
+        GeometryReader { viewport in
+            let lineHeight = state.preferences.fontSize * state.preferences.lineDensity.multiplier
+            let readingInset = 42.0
+            let bottomInset = max(viewport.size.height - readingInset - lineHeight, 0)
+
+            TimelineView(
+                .animation(
+                    minimumInterval: 1.0 / 30.0,
+                    paused: !state.autoScrollRunning
+                )
+            ) { timeline in
+                VStack(spacing: 0) {
+                    ForEach(Array(state.prompterTrack.lines.enumerated()), id: \.offset) { _, line in
                         Text(line.text)
                             .font(lineFont(for: line.role))
                             .foregroundStyle(lineColor(for: line.role))
                             .frame(maxWidth: .infinity, alignment: textAlignment)
+                            .frame(height: lineHeight)
                             .lineLimit(1)
                             .minimumScaleFactor(0.64)
                             .accessibilityLabel(line.text)
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                VStack(spacing: 7) {
-                    Image(systemName: "text.cursor")
-                        .font(.system(size: 22))
-                    Text("文稿还是空的")
-                        .font(.system(size: 17, weight: .semibold))
-                    Text("返回编辑器，粘贴你的会议讲稿")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                .padding(.top, readingInset)
+                .padding(.bottom, bottomInset)
+                .background {
+                    GeometryReader { content in
+                        Color.clear.preference(
+                            key: PrompterTrackHeightKey.self,
+                            value: content.size.height
+                        )
+                    }
                 }
-                .foregroundStyle(.white.opacity(0.8))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .offset(y: -state.scrollOffset)
+                .onChange(of: timeline.date) { _, date in
+                    guard state.autoScrollRunning else {
+                        lastTimelineDate = nil
+                        return
+                    }
+                    if let previous = lastTimelineDate {
+                        state.advanceAutoScroll(
+                            elapsed: min(max(date.timeIntervalSince(previous), 0), 0.2)
+                        )
+                    }
+                    lastTimelineDate = date
+                }
+            }
+            .onPreferenceChange(PrompterTrackHeightKey.self) { contentHeight in
+                state.setScrollMetrics(
+                    lineHeight: lineHeight,
+                    maximumOffset: max(contentHeight - viewport.size.height, 0)
+                )
+            }
+            .onChange(of: state.autoScrollRunning) { _, running in
+                lastTimelineDate = running ? Date() : nil
             }
         }
+        .clipped()
     }
 
     private var controls: some View {
         HStack(spacing: 4) {
             controlButton("上一页", systemImage: "chevron.up", action: coordinator.previousPage)
             controlButton("下一页", systemImage: "chevron.down", action: coordinator.nextPage)
+            separator
+            controlButton(
+                state.autoScrollRunning ? "暂停自动滚动" : "开始自动滚动",
+                systemImage: state.autoScrollRunning ? "pause.fill" : "play.fill",
+                isActive: state.autoScrollRunning,
+                action: coordinator.toggleAutoScroll
+            )
+            controlButton("回到开头", systemImage: "backward.end.fill", action: coordinator.resetAutoScroll)
             separator
             controlButton(
                 "People View",
@@ -195,5 +250,13 @@ struct PresenterView: View {
             guard !Task.isCancelled else { return }
             controlsVisible = false
         }
+    }
+}
+
+private struct PrompterTrackHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }

@@ -55,6 +55,18 @@ final class AppCoordinator {
         state.previousPage()
     }
 
+    func toggleAutoScroll() {
+        state.toggleAutoScroll()
+    }
+
+    func resetAutoScroll() {
+        state.resetAutoScroll()
+    }
+
+    func manualScroll(by distance: Double) {
+        state.manualScroll(by: distance)
+    }
+
     func updatePreferences(_ update: (inout PrompterPreferences) -> Void) {
         state.updatePreferences(update)
         panelController?.syncConfiguration()

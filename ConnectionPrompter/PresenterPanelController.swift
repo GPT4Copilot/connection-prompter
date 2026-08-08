@@ -38,8 +38,8 @@ final class PresenterPanelController: NSObject, NSWindowDelegate {
         panel.delegate = self
 
         let hostingView = PrompterHostingView(rootView: PresenterView(coordinator: coordinator))
-        hostingView.onScroll = { [weak self] delta in
-            self?.handleScroll(delta)
+        hostingView.onScroll = { [weak self] delta, isPrecise in
+            self?.handleScroll(delta, isPrecise: isPrecise)
         }
         hostingView.onNavigationKey = { [weak self] direction in
             if direction < 0 {
@@ -115,7 +115,12 @@ final class PresenterPanelController: NSObject, NSWindowDelegate {
         coordinator.state.setPanelFrame(WindowFrame(panel.frame))
     }
 
-    private func handleScroll(_ delta: CGFloat) {
+    private func handleScroll(_ delta: CGFloat, isPrecise: Bool) {
+        if isPrecise {
+            coordinator.manualScroll(by: Double(-delta))
+            return
+        }
+
         let now = Date()
         if now.timeIntervalSince(lastScrollNavigation) < 0.35 { return }
         scrollAccumulator += delta
@@ -175,13 +180,13 @@ final class PresenterPanelController: NSObject, NSWindowDelegate {
 }
 
 private final class PrompterHostingView<Content: View>: NSHostingView<Content> {
-    var onScroll: ((CGFloat) -> Void)?
+    var onScroll: ((CGFloat, Bool) -> Void)?
     var onNavigationKey: ((Int) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
 
     override func scrollWheel(with event: NSEvent) {
-        onScroll?(event.scrollingDeltaY)
+        onScroll?(event.scrollingDeltaY, event.hasPreciseScrollingDeltas)
     }
 
     override func keyDown(with event: NSEvent) {

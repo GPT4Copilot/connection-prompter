@@ -211,6 +211,14 @@ private struct PrompterSettingsView: View {
                     .accessibilityLabel("背景透明度")
             }
 
+            settingRow(
+                "自动滚动速度",
+                value: String(format: "%.1f 行/秒", state.preferences.autoScrollSpeed)
+            ) {
+                Slider(value: autoScrollSpeedBinding, in: 0.1...3, step: 0.1)
+                    .accessibilityLabel("自动滚动速度")
+            }
+
             Picker("行距", selection: lineDensityBinding) {
                 ForEach(LineDensity.allCases, id: \.self) { density in
                     Text(density.label).tag(density)
@@ -262,6 +270,12 @@ private struct PrompterSettingsView: View {
     private var lineDensityBinding: Binding<LineDensity> {
         Binding(get: { state.preferences.lineDensity }, set: { value in
             coordinator.updatePreferences { $0.lineDensity = value }
+        })
+    }
+
+    private var autoScrollSpeedBinding: Binding<Double> {
+        Binding(get: { state.preferences.autoScrollSpeed }, set: { value in
+            coordinator.updatePreferences { $0.autoScrollSpeed = value }
         })
     }
 

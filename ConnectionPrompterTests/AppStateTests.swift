@@ -160,4 +160,20 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.scrollOffset, 0)
         XCTAssertFalse(state.autoScrollRunning)
     }
+
+    @MainActor
+    func testPageNavigationMovesContinuousTrackAndPausesAutomaticScrolling() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        state.updateContent("第一段\n\n第二段\n\n第三段")
+        state.setScrollMetrics(lineHeight: 40, maximumOffset: 500)
+        state.startAutoScroll()
+
+        state.nextPage()
+
+        XCTAssertEqual(state.scrollOffset, 120)
+        XCTAssertFalse(state.autoScrollRunning)
+
+        state.previousPage()
+        XCTAssertEqual(state.scrollOffset, 0)
+    }
 }

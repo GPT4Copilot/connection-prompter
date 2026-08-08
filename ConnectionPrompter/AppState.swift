@@ -8,6 +8,7 @@ final class AppState {
     var searchQuery = ""
     var preferences: PrompterPreferences
     private(set) var pages: [PrompterPage]
+    private(set) var prompterTrack: PrompterTrack
     private(set) var currentPage: Int
     private(set) var scrollOffset: Double
     private(set) var autoScrollRunning: Bool
@@ -18,6 +19,7 @@ final class AppState {
     private let store: any SessionStoring
     private let parser: ScriptParser
     private let pageComposer: PageComposer<TextKitLineBreaker>
+    private let trackComposer: PrompterTrackComposer<TextKitLineBreaker>
     private var autosaveTask: Task<Void, Never>?
     private var autoScrollLineHeight: Double = 1
     private var maximumScrollOffset: Double = 0
@@ -32,6 +34,7 @@ final class AppState {
         self.store = store
         self.parser = parser
         self.pageComposer = pageComposer
+        self.trackComposer = PrompterTrackComposer(lineBreaker: TextKitLineBreaker())
 
         let restored: RestorableSession
         do {
@@ -49,6 +52,7 @@ final class AppState {
         panelFrame = restored.panelFrame
         presenterVisible = restored.presenterVisible
         pages = []
+        prompterTrack = PrompterTrack(lines: [])
         rebuildPages()
     }
 
@@ -140,12 +144,20 @@ final class AppState {
     func nextPage() {
         pauseAutoScroll()
         currentPage = PageNavigation.next(from: currentPage, pageCount: pages.count)
+        scrollOffset = min(
+            scrollOffset + autoScrollLineHeight * Double(preferences.effectiveStyle.maximumLines),
+            maximumScrollOffset
+        )
         scheduleAutosave()
     }
 
     func previousPage() {
         pauseAutoScroll()
         currentPage = PageNavigation.previous(from: currentPage, pageCount: pages.count)
+        scrollOffset = max(
+            scrollOffset - autoScrollLineHeight * Double(preferences.effectiveStyle.maximumLines),
+            0
+        )
         scheduleAutosave()
     }
 
@@ -274,10 +286,9 @@ final class AppState {
             lineHeight: preferences.lineDensity.multiplier,
             maximumLines: style.maximumLines
         )
-        pages = pageComposer.compose(
-            blocks: parser.parse(document.content),
-            layout: layout
-        )
+        let blocks = parser.parse(document.content)
+        pages = pageComposer.compose(blocks: blocks, layout: layout)
+        prompterTrack = trackComposer.compose(blocks: blocks, layout: layout)
         currentPage = PageNavigation.clamp(currentPage, pageCount: pages.count)
     }
 

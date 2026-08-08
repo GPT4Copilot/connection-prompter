@@ -26,6 +26,10 @@ struct PrompterPage: Equatable, Sendable {
     var lines: [PrompterLine]
 }
 
+struct PrompterTrack: Equatable, Sendable {
+    var lines: [PrompterLine]
+}
+
 protocol TextLineBreaking: Sendable {
     func lines(for text: String, layout: PrompterLayout) -> [String]
 }
@@ -155,6 +159,24 @@ struct PageComposer<LineBreaker: TextLineBreaking>: PageComposing {
     ) -> String? {
         guard index + 1 < blocks.count, case .text = blocks[index + 1] else { return nil }
         return wrappedLines[index + 1].first
+    }
+}
+
+struct PrompterTrackComposer<LineBreaker: TextLineBreaking>: Sendable {
+    let lineBreaker: LineBreaker
+
+    func compose(blocks: [ScriptBlock], layout: PrompterLayout) -> PrompterTrack {
+        let lines = blocks.flatMap { block -> [PrompterLine] in
+            switch block {
+            case let .text(text):
+                return lineBreaker.lines(for: text, layout: layout).map {
+                    PrompterLine(text: $0, role: .current)
+                }
+            case let .cue(cue):
+                return [PrompterLine(text: cue.displayLabel, role: .cue)]
+            }
+        }
+        return PrompterTrack(lines: lines)
     }
 }
 

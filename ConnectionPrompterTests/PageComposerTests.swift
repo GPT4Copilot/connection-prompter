@@ -66,6 +66,27 @@ final class PageComposerTests: XCTestCase {
         XCTAssertEqual(PageNavigation.clamp(8, pageCount: 3), 2)
         XCTAssertEqual(PageNavigation.clamp(2, pageCount: 0), 0)
     }
+
+    func testContinuousTrackKeepsCueStandaloneAndTextInSourceOrder() {
+        let breaker = FixtureLineBreaker(linesByText: [
+            "第一段": ["第一行", "第二行"],
+            "第二段": ["第三行"]
+        ])
+        let layout = PrompterLayout(
+            width: 560,
+            fontSize: 32,
+            lineHeight: 1.35,
+            maximumLines: 3
+        )
+
+        let track = PrompterTrackComposer(lineBreaker: breaker).compose(
+            blocks: [.text("第一段"), .cue(.pause), .text("第二段")],
+            layout: layout
+        )
+
+        XCTAssertEqual(track.lines.map(\.text), ["第一行", "第二行", "⏸ 停", "第三行"])
+        XCTAssertEqual(track.lines.map(\.role), [.current, .current, .cue, .current])
+    }
 }
 
 private struct FixtureLineBreaker: TextLineBreaking {
