@@ -104,4 +104,60 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.document.id, originalID)
         XCTAssertFalse(state.library.documents.contains(where: { $0.id == secondID }))
     }
+
+    @MainActor
+    func testAutoScrollStopsWhenItReachesTheEnd() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        state.updateContent(String(repeating: "滚动内容 ", count: 200))
+        state.setScrollMetrics(lineHeight: 40, maximumOffset: 100)
+        state.startAutoScroll()
+
+        state.advanceAutoScroll(elapsed: 20)
+
+        XCTAssertEqual(state.scrollOffset, 100)
+        XCTAssertFalse(state.autoScrollRunning)
+    }
+
+    @MainActor
+    func testResetAutoScrollPausesAndReturnsToTop() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        state.updateContent("可以滚动的内容")
+        state.setScrollMetrics(lineHeight: 40, maximumOffset: 500)
+        state.startAutoScroll()
+        state.advanceAutoScroll(elapsed: 1)
+
+        state.resetAutoScroll()
+
+        XCTAssertEqual(state.scrollOffset, 0)
+        XCTAssertFalse(state.autoScrollRunning)
+    }
+
+    @MainActor
+    func testManualScrollPausesAutomaticScrollingAndClampsPosition() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        state.updateContent("可以滚动的内容")
+        state.setScrollMetrics(lineHeight: 40, maximumOffset: 100)
+        state.startAutoScroll()
+
+        state.manualScroll(by: 200)
+
+        XCTAssertEqual(state.scrollOffset, 100)
+        XCTAssertFalse(state.autoScrollRunning)
+    }
+
+    @MainActor
+    func testChangingDocumentResetsScrollPositionAndPauses() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        state.updateContent("第一份内容")
+        let firstID = state.document.id
+        state.setScrollMetrics(lineHeight: 40, maximumOffset: 100)
+        state.startAutoScroll()
+        state.advanceAutoScroll(elapsed: 1)
+        state.createDocument()
+
+        state.selectDocument(firstID)
+
+        XCTAssertEqual(state.scrollOffset, 0)
+        XCTAssertFalse(state.autoScrollRunning)
+    }
 }

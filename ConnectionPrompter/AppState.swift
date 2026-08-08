@@ -9,6 +9,8 @@ final class AppState {
     var preferences: PrompterPreferences
     private(set) var pages: [PrompterPage]
     private(set) var currentPage: Int
+    private(set) var scrollOffset: Double
+    private(set) var autoScrollRunning: Bool
     var panelFrame: WindowFrame
     private(set) var presenterVisible: Bool
     var bannerMessage: String?
@@ -17,6 +19,8 @@ final class AppState {
     private let parser: ScriptParser
     private let pageComposer: PageComposer<TextKitLineBreaker>
     private var autosaveTask: Task<Void, Never>?
+    private var autoScrollLineHeight: Double = 1
+    private var maximumScrollOffset: Double = 0
 
     init(
         store: any SessionStoring,
@@ -40,6 +44,8 @@ final class AppState {
         library = restored.library
         preferences = restored.preferences
         currentPage = restored.currentPage
+        scrollOffset = max(restored.scrollOffset, 0)
+        autoScrollRunning = false
         panelFrame = restored.panelFrame
         presenterVisible = restored.presenterVisible
         pages = []
@@ -91,6 +97,7 @@ final class AppState {
             document.content = content
         }
         rebuildPages()
+        resetScrollPosition()
     }
 
     @discardableResult
@@ -98,6 +105,7 @@ final class AppState {
         let id = library.create(now: nextDocumentTimestamp())
         currentPage = 0
         rebuildPages()
+        resetScrollPosition()
         scheduleAutosave()
         return id
     }
@@ -106,6 +114,7 @@ final class AppState {
         guard id != library.selectedDocumentID, library.select(id) else { return }
         currentPage = 0
         rebuildPages()
+        resetScrollPosition()
         scheduleAutosave()
     }
 
@@ -113,21 +122,29 @@ final class AppState {
         library.delete(library.selectedDocumentID, now: nextDocumentTimestamp())
         currentPage = 0
         rebuildPages()
+        resetScrollPosition()
         scheduleAutosave()
     }
 
     func updatePreferences(_ update: (inout PrompterPreferences) -> Void) {
         update(&preferences)
+        preferences.autoScrollSpeed = min(max(preferences.autoScrollSpeed, 0.1), 3)
+        preferences.backgroundTransparency = min(
+            max(preferences.backgroundTransparency, 0),
+            1
+        )
         rebuildPages()
         scheduleAutosave()
     }
 
     func nextPage() {
+        pauseAutoScroll()
         currentPage = PageNavigation.next(from: currentPage, pageCount: pages.count)
         scheduleAutosave()
     }
 
     func previousPage() {
+        pauseAutoScroll()
         currentPage = PageNavigation.previous(from: currentPage, pageCount: pages.count)
         scheduleAutosave()
     }
@@ -152,6 +169,69 @@ final class AppState {
         if !preferences.peopleView {
             rebuildPages()
         }
+        scheduleAutosave()
+    }
+
+    func setScrollMetrics(lineHeight: Double, maximumOffset: Double) {
+        autoScrollLineHeight = max(lineHeight, 0)
+        maximumScrollOffset = max(maximumOffset, 0)
+        scrollOffset = min(max(scrollOffset, 0), maximumScrollOffset)
+        if maximumScrollOffset > 0, scrollOffset >= maximumScrollOffset {
+            autoScrollRunning = false
+        }
+    }
+
+    func startAutoScroll() {
+        guard !document.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              maximumScrollOffset > 0 else {
+            autoScrollRunning = false
+            return
+        }
+        if scrollOffset >= maximumScrollOffset {
+            scrollOffset = 0
+        }
+        autoScrollRunning = true
+        scheduleAutosave()
+    }
+
+    func pauseAutoScroll() {
+        guard autoScrollRunning else { return }
+        autoScrollRunning = false
+        scheduleAutosave()
+    }
+
+    func toggleAutoScroll() {
+        autoScrollRunning ? pauseAutoScroll() : startAutoScroll()
+    }
+
+    func resetAutoScroll() {
+        autoScrollRunning = false
+        scrollOffset = 0
+        scheduleAutosave()
+    }
+
+    func advanceAutoScroll(elapsed: TimeInterval) {
+        guard autoScrollRunning else { return }
+        let advance = AutoScrollEngine.advance(
+            offset: scrollOffset,
+            elapsed: elapsed,
+            linesPerSecond: preferences.autoScrollSpeed,
+            lineHeight: autoScrollLineHeight,
+            maximumOffset: maximumScrollOffset
+        )
+        scrollOffset = advance.offset
+        if advance.reachedEnd {
+            autoScrollRunning = false
+            scheduleAutosave()
+        }
+    }
+
+    func manualScroll(by distance: Double) {
+        pauseAutoScroll()
+        scrollOffset = min(
+            max(scrollOffset + distance, 0),
+            maximumScrollOffset
+        )
         scheduleAutosave()
     }
 
@@ -201,6 +281,11 @@ final class AppState {
         currentPage = PageNavigation.clamp(currentPage, pageCount: pages.count)
     }
 
+    private func resetScrollPosition() {
+        scrollOffset = 0
+        autoScrollRunning = false
+    }
+
     private func scheduleAutosave() {
         autosaveTask?.cancel()
         autosaveTask = Task { [weak self] in
@@ -214,8 +299,8 @@ final class AppState {
         RestorableSession(
             library: library,
             currentPage: currentPage,
-            scrollOffset: 0,
-            autoScrollRunning: false,
+            scrollOffset: scrollOffset,
+            autoScrollRunning: autoScrollRunning,
             panelFrame: panelFrame,
             preferences: preferences,
             presenterVisible: presenterVisible
