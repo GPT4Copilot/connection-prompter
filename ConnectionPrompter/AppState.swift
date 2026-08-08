@@ -4,7 +4,8 @@ import Observation
 @MainActor
 @Observable
 final class AppState {
-    var document: ScriptDocument
+    var library: DocumentLibrary
+    var searchQuery = ""
     var preferences: PrompterPreferences
     private(set) var pages: [PrompterPage]
     private(set) var currentPage: Int
@@ -36,7 +37,7 @@ final class AppState {
             bannerMessage = "上次文稿无法读取，已打开空白文稿；原文件仍保留在本机。"
         }
 
-        document = restored.document
+        library = restored.library
         preferences = restored.preferences
         currentPage = restored.currentPage
         panelFrame = restored.panelFrame
@@ -48,6 +49,19 @@ final class AppState {
     var currentPrompterPage: PrompterPage? {
         guard pages.indices.contains(currentPage) else { return nil }
         return pages[currentPage]
+    }
+
+    var document: ScriptDocument {
+        library.selectedDocument ?? .blank()
+    }
+
+    var visibleDocuments: [ScriptDocument] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return library.documents }
+        return library.documents.filter { document in
+            document.title.localizedCaseInsensitiveContains(query)
+                || document.content.localizedCaseInsensitiveContains(query)
+        }
     }
 
     var segmentCount: Int {
@@ -67,14 +81,39 @@ final class AppState {
     }
 
     func updateTitle(_ title: String) {
-        document.title = title
-        markDocumentUpdated()
+        updateSelectedDocument { document in
+            document.title = title
+        }
     }
 
     func updateContent(_ content: String) {
-        document.content = content
-        markDocumentUpdated()
+        updateSelectedDocument { document in
+            document.content = content
+        }
         rebuildPages()
+    }
+
+    @discardableResult
+    func createDocument() -> UUID {
+        let id = library.create(now: nextDocumentTimestamp())
+        currentPage = 0
+        rebuildPages()
+        scheduleAutosave()
+        return id
+    }
+
+    func selectDocument(_ id: UUID) {
+        guard id != library.selectedDocumentID, library.select(id) else { return }
+        currentPage = 0
+        rebuildPages()
+        scheduleAutosave()
+    }
+
+    func deleteSelectedDocument() {
+        library.delete(library.selectedDocumentID, now: nextDocumentTimestamp())
+        currentPage = 0
+        rebuildPages()
+        scheduleAutosave()
     }
 
     func updatePreferences(_ update: (inout PrompterPreferences) -> Void) {
@@ -129,9 +168,21 @@ final class AppState {
         bannerMessage = nil
     }
 
-    private func markDocumentUpdated() {
-        document.updatedAt = Date()
+    private func updateSelectedDocument(_ update: (inout ScriptDocument) -> Void) {
+        let timestamp = nextDocumentTimestamp()
+        library.updateSelected { document in
+            update(&document)
+            document.updatedAt = timestamp
+        }
         scheduleAutosave()
+    }
+
+    private func nextDocumentTimestamp() -> Date {
+        let now = Date()
+        guard let latest = library.documents.map(\.updatedAt).max(), now <= latest else {
+            return now
+        }
+        return latest.addingTimeInterval(0.001)
     }
 
     private func rebuildPages() {
@@ -161,8 +212,10 @@ final class AppState {
 
     private func makeSession() -> RestorableSession {
         RestorableSession(
-            document: document,
+            library: library,
             currentPage: currentPage,
+            scrollOffset: 0,
+            autoScrollRunning: false,
             panelFrame: panelFrame,
             preferences: preferences,
             presenterVisible: presenterVisible

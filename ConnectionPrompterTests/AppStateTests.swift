@@ -41,4 +41,67 @@ final class AppStateTests: XCTestCase {
 
         XCTAssertEqual(try store.load()?.document.title, "读书会主持稿")
     }
+
+    @MainActor
+    func testEditingSelectedDocumentUpdatesOnlyThatDocumentAndMovesItFirst() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        state.updateTitle("第一份")
+        let firstID = state.document.id
+        let secondID = state.createDocument()
+        state.updateTitle("第二份")
+
+        state.selectDocument(firstID)
+        state.updateContent("第一份的新内容")
+
+        XCTAssertEqual(state.library.documents.first?.id, firstID)
+        XCTAssertEqual(state.library.documents.first?.content, "第一份的新内容")
+        XCTAssertEqual(
+            state.library.documents.first(where: { $0.id == secondID })?.title,
+            "第二份"
+        )
+    }
+
+    @MainActor
+    func testSearchMatchesTitleAndBodyCaseInsensitively() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        state.updateTitle("Weekly Demo")
+        state.updateContent("客户会议")
+        let matchingID = state.document.id
+        state.createDocument()
+        state.updateTitle("其他内容")
+
+        state.searchQuery = "weekly"
+        XCTAssertEqual(state.visibleDocuments.map(\.id), [matchingID])
+
+        state.searchQuery = "客户"
+        XCTAssertEqual(state.visibleDocuments.map(\.id), [matchingID])
+    }
+
+    @MainActor
+    func testSelectingDocumentResetsNavigationAndRebuildsItsPages() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        state.updateContent("第一段\n\n第二段")
+        state.nextPage()
+        let firstID = state.document.id
+        let secondID = state.createDocument()
+        state.updateContent("另一份")
+
+        state.selectDocument(firstID)
+
+        XCTAssertEqual(state.currentPage, 0)
+        XCTAssertEqual(state.pages.count, 2)
+        XCTAssertNotEqual(secondID, state.document.id)
+    }
+
+    @MainActor
+    func testDeletingSelectedDocumentKeepsAUsableSelection() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        let originalID = state.document.id
+        let secondID = state.createDocument()
+
+        state.deleteSelectedDocument()
+
+        XCTAssertEqual(state.document.id, originalID)
+        XCTAssertFalse(state.library.documents.contains(where: { $0.id == secondID }))
+    }
 }
