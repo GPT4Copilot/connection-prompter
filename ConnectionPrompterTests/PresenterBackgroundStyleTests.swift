@@ -14,6 +14,18 @@ final class PresenterBackgroundStyleTests: XCTestCase {
         XCTAssertEqual(style.chromeOpacity, 0)
     }
 
+    func testFullTransparencyStrengthensTextContrastWithoutRestoringBackground() {
+        let style = PresenterBackgroundStyle(
+            transparency: 1,
+            reduceTransparency: false,
+            blurEnabled: true
+        )
+
+        XCTAssertGreaterThanOrEqual(style.textShadowOpacity, 0.8)
+        XCTAssertGreaterThanOrEqual(style.textShadowRadius, 3)
+        XCTAssertEqual(style.blackFillOpacity, 0)
+    }
+
     func testZeroPercentTransparencyIsOpaque() {
         let style = PresenterBackgroundStyle(
             transparency: 0,

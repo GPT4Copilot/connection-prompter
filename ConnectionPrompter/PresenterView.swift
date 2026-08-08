@@ -79,6 +79,10 @@ struct PresenterView: View {
                     .foregroundStyle(.secondary)
             }
             .foregroundStyle(.white.opacity(0.8))
+            .shadow(
+                color: .black.opacity(backgroundStyle.textShadowOpacity),
+                radius: backgroundStyle.textShadowRadius
+            )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             continuousTrack
@@ -106,6 +110,10 @@ struct PresenterView: View {
                             .frame(height: lineHeight)
                             .lineLimit(1)
                             .minimumScaleFactor(0.64)
+                            .shadow(
+                                color: .black.opacity(backgroundStyle.textShadowOpacity),
+                                radius: backgroundStyle.textShadowRadius
+                            )
                             .accessibilityLabel(line.text)
                     }
                 }

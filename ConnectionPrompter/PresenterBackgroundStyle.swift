@@ -4,6 +4,8 @@ struct PresenterBackgroundStyle: Equatable, Sendable {
     let materialOpacity: Double
     let blackFillOpacity: Double
     let chromeOpacity: Double
+    let textShadowOpacity: Double
+    let textShadowRadius: Double
 
     init(
         transparency: Double,
@@ -15,5 +17,7 @@ struct PresenterBackgroundStyle: Equatable, Sendable {
         materialOpacity = blurEnabled && !reduceTransparency ? visibility : 0
         blackFillOpacity = visibility * (blurEnabled && !reduceTransparency ? 0.72 : 1)
         chromeOpacity = visibility
+        textShadowOpacity = 0.45 + clampedTransparency * 0.4
+        textShadowRadius = 1.5 + clampedTransparency * 2
     }
 }

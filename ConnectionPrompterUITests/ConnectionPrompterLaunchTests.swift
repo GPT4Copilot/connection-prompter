@@ -106,6 +106,50 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         )
     }
 
+    func testPresenterSupportsFullTransparency() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        replaceText(in: app.textViews["文稿正文"], with: "完全透明时文字仍然清楚")
+        app.buttons["显示设置"].click()
+
+        let transparency = app.sliders["背景透明度"]
+        XCTAssertTrue(transparency.waitForExistence(timeout: 2))
+        transparency.adjust(toNormalizedSliderPosition: 1)
+        app.typeKey(.escape, modifierFlags: [])
+
+        app.buttons["进入主持"].click()
+        XCTAssertTrue(app.dialogs["主持浮窗"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["完全透明时文字仍然清楚"].exists)
+        attachScreenScreenshot(named: "fully-transparent-presenter")
+    }
+
+    func testPresenterCanStartAndPauseAutomaticScrolling() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        replaceText(
+            in: app.textViews["文稿正文"],
+            with: (1...12).map { "自动滚动第\($0)行" }.joined(separator: "\n")
+        )
+        app.buttons["进入主持"].click()
+
+        let presenter = app.dialogs["主持浮窗"]
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
+        presenter.hover()
+
+        let start = app.buttons["开始自动滚动"]
+        XCTAssertTrue(start.waitForExistence(timeout: 2))
+        start.click()
+
+        let pause = app.buttons["暂停自动滚动"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 2))
+        pause.click()
+        XCTAssertTrue(app.buttons["开始自动滚动"].waitForExistence(timeout: 2))
+    }
+
     private func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
@@ -116,6 +160,13 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
 
     private func attachScreenshot(of element: XCUIElement, named name: String) {
         let attachment = XCTAttachment(screenshot: element.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func attachScreenScreenshot(named name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
