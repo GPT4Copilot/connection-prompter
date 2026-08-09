@@ -279,7 +279,7 @@ git commit -m "feat: add presenter arrow key controls"
 - Consumes: the completed slider and local-key behavior from Tasks 1 and 2.
 - Produces: version `1.2.1`, build `4`, a verified arm64 Release app, and a tested ZIP archive.
 
-- [ ] **Step 1: Update version metadata and user-facing documentation**
+- [x] **Step 1: Update version metadata and user-facing documentation**
 
 In both app build configurations in `ConnectionPrompter.xcodeproj/project.pbxproj`, set:
 
@@ -304,7 +304,7 @@ Add these two entries before the global speed shortcuts in the shortcut list:
 - `→`：加快自动滚动 0.1 行/秒（主持状态且未编辑文字时）
 ```
 
-- [ ] **Step 2: Check and commit the release metadata**
+- [x] **Step 2: Check and commit the release metadata**
 
 ```bash
 git diff --check
