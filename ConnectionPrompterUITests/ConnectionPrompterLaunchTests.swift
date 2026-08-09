@@ -278,6 +278,44 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         XCTAssertEqual((restoredSetting.value as? NSNumber)?.intValue, 0)
     }
 
+    func testSceneSettingControlsEditorVisibilityDuringPresentation() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        let editor = app.textViews["文稿正文"]
+        let setting = app.checkBoxes["主持时隐藏编辑页"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        XCTAssertTrue(setting.waitForExistence(timeout: 2))
+        XCTAssertEqual((setting.value as? NSNumber)?.intValue, 1)
+
+        app.buttons["进入主持"].click()
+
+        let presenter = app.dialogs["主持浮窗"]
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
+        let editorHideDeadline = Date().addingTimeInterval(2)
+        while editor.exists && Date() < editorHideDeadline {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        guard !editor.exists else {
+            app.terminate()
+            XCTFail("进入主持后编辑窗口仍存在")
+            return
+        }
+        presenter.hover()
+        let returnButton = presenter.buttons["返回编辑器"]
+        XCTAssertTrue(returnButton.waitForExistence(timeout: 2))
+        returnButton.click()
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+
+        setting.click()
+        XCTAssertEqual((setting.value as? NSNumber)?.intValue, 0)
+        app.buttons["进入主持"].click()
+
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
+        XCTAssertTrue(editor.exists)
+    }
+
     private func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
