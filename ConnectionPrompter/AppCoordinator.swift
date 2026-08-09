@@ -63,6 +63,14 @@ final class AppCoordinator {
         state.resetAutoScroll()
     }
 
+    func setAutoScrollSpeed(_ speed: Double) {
+        state.setAutoScrollSpeed(speed)
+    }
+
+    func adjustAutoScrollSpeed(by amount: Double) {
+        state.adjustAutoScrollSpeed(by: amount)
+    }
+
     func manualScroll(by distance: Double) {
         state.manualScroll(by: distance)
     }

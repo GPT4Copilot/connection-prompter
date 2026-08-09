@@ -283,9 +283,10 @@ private struct PrompterSettingsView: View {
     }
 
     private var autoScrollSpeedBinding: Binding<Double> {
-        Binding(get: { state.preferences.autoScrollSpeed }, set: { value in
-            coordinator.updatePreferences { $0.autoScrollSpeed = value }
-        })
+        Binding(
+            get: { state.preferences.autoScrollSpeed },
+            set: { value in coordinator.setAutoScrollSpeed(value) }
+        )
     }
 
     private var blurBinding: Binding<Bool> {

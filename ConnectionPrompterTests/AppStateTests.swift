@@ -176,4 +176,55 @@ final class AppStateTests: XCTestCase {
         state.previousPage()
         XCTAssertEqual(state.scrollOffset, 0)
     }
+
+    @MainActor
+    func testAutoScrollSpeedSnapsToTenthsAndClampsToSupportedRange() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+
+        state.setAutoScrollSpeed(0.56)
+        XCTAssertEqual(state.preferences.autoScrollSpeed, 0.6, accuracy: 0.0001)
+
+        state.setAutoScrollSpeed(-10)
+        XCTAssertEqual(state.preferences.autoScrollSpeed, 0.1, accuracy: 0.0001)
+
+        state.adjustAutoScrollSpeed(by: -0.1)
+        XCTAssertEqual(state.preferences.autoScrollSpeed, 0.1, accuracy: 0.0001)
+
+        state.setAutoScrollSpeed(10)
+        state.adjustAutoScrollSpeed(by: 0.1)
+        XCTAssertEqual(state.preferences.autoScrollSpeed, 3.0, accuracy: 0.0001)
+    }
+
+    @MainActor
+    func testChangingAutoScrollSpeedPreservesRunningStateAndPosition() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        state.updateContent(String(repeating: "滚动内容 ", count: 200))
+        state.setScrollMetrics(lineHeight: 40, maximumOffset: 500)
+        state.startAutoScroll()
+        state.advanceAutoScroll(elapsed: 1)
+        let offsetBeforeChange = state.scrollOffset
+        let pageBeforeChange = state.currentPage
+
+        state.adjustAutoScrollSpeed(by: 0.1)
+
+        XCTAssertEqual(state.preferences.autoScrollSpeed, 0.6, accuracy: 0.0001)
+        XCTAssertEqual(state.scrollOffset, offsetBeforeChange, accuracy: 0.0001)
+        XCTAssertEqual(state.currentPage, pageBeforeChange)
+        XCTAssertTrue(state.autoScrollRunning)
+    }
+
+    @MainActor
+    func testAutoScrollSpeedChangeIsAutosaved() async throws {
+        let store = FileSessionStore(directoryURL: directoryURL)
+        let state = AppState(store: store)
+
+        state.setAutoScrollSpeed(1.7)
+        try await Task.sleep(for: .milliseconds(500))
+
+        XCTAssertEqual(
+            try store.load()?.preferences.autoScrollSpeed ?? -1,
+            1.7,
+            accuracy: 0.0001
+        )
+    }
 }
