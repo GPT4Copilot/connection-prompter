@@ -4,7 +4,7 @@
 
 **Goal:** Prevent the presenter speed slider from moving its window, add unmodified presenter-only arrow-key controls, and ship Connection Prompter 1.2.1.
 
-**Architecture:** Disable AppKit's automatic background dragging and let a dedicated `PresenterPanel.sendEvent(_:)` call `NSWindow.performDrag(with:)` only below the top 50-point toolbar interaction band and outside the 6-point resize edge; the existing SwiftUI speed slider then receives its drag without moving the panel. Extend the existing local key monitor for unmodified left/right keys and reuse the existing coordinator methods, while leaving the global `⌥⌘` shortcuts unchanged.
+**Architecture:** Disable AppKit's automatic background dragging and let a dedicated `PresenterPanel.sendEvent(_:)` call `NSWindow.performDrag(with:)` only below the top 50-point toolbar interaction band and outside the 6-point resize edge; the existing SwiftUI speed slider then receives its drag without moving the panel. End editor focus when presenter mode starts, extend the existing local key monitor for unmodified left/right keys, ignore the intrinsic function/numeric-pad flags carried by arrow events, and reuse the existing coordinator methods while leaving the global `⌥⌘` shortcuts unchanged.
 
 **Tech Stack:** Swift 6, SwiftUI, AppKit (`NSPanel`, `NSHostingView`), XCTest/XCUITest, Xcode 26 command-line build tools.
 
@@ -154,7 +154,7 @@ git commit -m "fix: keep presenter speed drag inside slider"
 - Consumes: `AppCoordinator.adjustAutoScrollSpeed(by:)`, `previousPage()`, and `nextPage()`.
 - Produces: local mappings `123 → -0.1`, `124 → +0.1`, `126 → previousPage`, and `125 → nextPage`; `49 → nextPage` remains unchanged.
 
-- [ ] **Step 1: Add a failing end-to-end arrow-key test**
+- [x] **Step 1: Add a failing end-to-end arrow-key test**
 
 Add this UI test before the private helpers in `ConnectionPrompterLaunchTests`:
 
@@ -166,7 +166,7 @@ Add this UI test before the private helpers in `ConnectionPrompterLaunchTests`:
 
         replaceText(
             in: app.textViews["文稿正文"],
-            with: (1...12).map { "方向键测试第\($0)行" }.joined(separator: "\n")
+            with: (1...6).map { "方向\($0)" }.joined(separator: "\n")
         )
         app.buttons["进入主持"].click()
 
@@ -187,7 +187,7 @@ Add this UI test before the private helpers in `ConnectionPrompterLaunchTests`:
         expectation(for: restoredSpeed, evaluatedWith: speedValue)
         waitForExpectations(timeout: 2)
 
-        let firstLine = presenter.staticTexts["方向键测试第1行"]
+        let firstLine = presenter.staticTexts["方向1"]
         XCTAssertTrue(firstLine.waitForExistence(timeout: 2))
         let originalY = firstLine.frame.minY
 
@@ -205,7 +205,7 @@ Add this UI test before the private helpers in `ConnectionPrompterLaunchTests`:
     }
 ```
 
-- [ ] **Step 2: Run the focused UI test and verify the red state**
+- [x] **Step 2: Run the focused UI test and verify the red state**
 
 Run:
 
@@ -215,7 +215,7 @@ xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompt
 
 Expected: FAIL while waiting for the speed value to become `0.6`, because key codes 123 and 124 are not handled yet. The existing up/down mappings are unchanged.
 
-- [ ] **Step 3: Route left and right keys through the existing coordinator**
+- [x] **Step 3: Route left and right keys through the existing coordinator**
 
 Update the switch in `PresenterPanelController.handleLocalNavigationKey`:
 
@@ -238,9 +238,9 @@ Update the switch in `PresenterPanelController.handleLocalNavigationKey`:
         }
 ```
 
-Do not alter the existing presenter-visible, modifier, or text-responder guard.
+In `show()`, call `NSApplication.shared.keyWindow?.makeFirstResponder(nil)` so entering presenter mode ends the editor focus that would otherwise block every local direction key. When deriving `hasModifiers`, check only `.command`, `.control`, `.option`, and `.shift`; arrow events carry intrinsic `.function`/`.numericPad` flags on macOS, and those are not user-held modifiers. Do not alter the existing presenter-visible or text-responder guard.
 
-- [ ] **Step 4: Run the focused UI test and verify the green state**
+- [x] **Step 4: Run the focused UI test and verify the green state**
 
 Run:
 
@@ -250,7 +250,7 @@ xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompt
 
 Expected: PASS with speed `0.5 → 0.6 → 0.5`; down moves the first line upward and up restores its position.
 
-- [ ] **Step 5: Run the existing speed-state unit tests**
+- [x] **Step 5: Run the existing speed-state unit tests**
 
 ```bash
 xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompter -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData-121 -resultBundlePath build/PresenterArrowStateGreen.xcresult -only-testing:ConnectionPrompterTests/AppStateTests/testAutoScrollSpeedSnapsToTenthsAndClampsToSupportedRange -only-testing:ConnectionPrompterTests/AppStateTests/testChangingAutoScrollSpeedPreservesRunningStateAndPosition test
@@ -258,7 +258,7 @@ xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompt
 
 Expected: both tests PASS, proving the new local key route keeps the existing clamp and no-reset behavior.
 
-- [ ] **Step 6: Check the focused diff and commit**
+- [x] **Step 6: Check the focused diff and commit**
 
 ```bash
 git diff --check

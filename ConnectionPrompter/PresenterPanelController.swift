@@ -90,6 +90,7 @@ final class PresenterPanelController: NSObject, NSWindowDelegate {
     }
 
     func show() {
+        NSApplication.shared.keyWindow?.makeFirstResponder(nil)
         syncConfiguration()
         panel.orderFrontRegardless()
     }
@@ -159,8 +160,11 @@ final class PresenterPanelController: NSObject, NSWindowDelegate {
     private func installLocalKeyMonitor() {
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             let keyCode = event.keyCode
+            let userModifierFlags: NSEvent.ModifierFlags = [
+                .command, .control, .option, .shift
+            ]
             let hasModifiers = !event.modifierFlags
-                .intersection(.deviceIndependentFlagsMask)
+                .intersection(userModifierFlags)
                 .isEmpty
             let handled = MainActor.assumeIsolated {
                 self?.handleLocalNavigationKey(keyCode, hasModifiers: hasModifiers) ?? false
@@ -177,6 +181,12 @@ final class PresenterPanelController: NSObject, NSWindowDelegate {
         }
 
         switch keyCode {
+        case 123:
+            coordinator.adjustAutoScrollSpeed(by: -0.1)
+            return true
+        case 124:
+            coordinator.adjustAutoScrollSpeed(by: 0.1)
+            return true
         case 126:
             coordinator.previousPage()
             return true

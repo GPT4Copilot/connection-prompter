@@ -203,6 +203,51 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         )
     }
 
+    func testPresenterArrowKeysAdjustSpeedAndNavigateText() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        replaceText(
+            in: app.textViews["文稿正文"],
+            with: (1...6).map { "方向\($0)" }.joined(separator: "\n")
+        )
+        app.buttons["进入主持"].click()
+
+        let presenter = app.dialogs["主持浮窗"]
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
+        presenter.hover()
+
+        let speedValue = presenter.staticTexts["主持滚动速度数值"]
+        XCTAssertEqual(speedValue.value as? String, "0.5")
+
+        app.typeKey(.rightArrow, modifierFlags: [])
+        let increased = NSPredicate(format: "value == %@", "0.6")
+        expectation(for: increased, evaluatedWith: speedValue)
+        waitForExpectations(timeout: 2)
+
+        app.typeKey(.leftArrow, modifierFlags: [])
+        let restoredSpeed = NSPredicate(format: "value == %@", "0.5")
+        expectation(for: restoredSpeed, evaluatedWith: speedValue)
+        waitForExpectations(timeout: 2)
+
+        let firstLine = presenter.staticTexts["方向1"]
+        XCTAssertTrue(firstLine.waitForExistence(timeout: 2))
+        let originalY = firstLine.frame.minY
+
+        app.typeKey(.downArrow, modifierFlags: [])
+        let movedUp = NSPredicate { _, _ in firstLine.frame.minY < originalY - 1 }
+        expectation(for: movedUp, evaluatedWith: firstLine)
+        waitForExpectations(timeout: 2)
+
+        app.typeKey(.upArrow, modifierFlags: [])
+        let returned = NSPredicate { _, _ in
+            abs(firstLine.frame.minY - originalY) <= 2
+        }
+        expectation(for: returned, evaluatedWith: firstLine)
+        waitForExpectations(timeout: 2)
+    }
+
     private func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
