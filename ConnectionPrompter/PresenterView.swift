@@ -166,6 +166,7 @@ struct PresenterView: View {
                 action: coordinator.toggleAutoScroll
             )
             controlButton("回到开头", systemImage: "backward.end.fill", action: coordinator.resetAutoScroll)
+            autoScrollSpeedControl
             separator
             controlButton(
                 "People View",
@@ -201,6 +202,31 @@ struct PresenterView: View {
         .background(.regularMaterial, in: Capsule())
         .overlay { Capsule().stroke(.white.opacity(0.18), lineWidth: 1) }
         .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
+    }
+
+    private var autoScrollSpeedControl: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "speedometer")
+                .font(.system(size: 11, weight: .semibold))
+                .accessibilityHidden(true)
+
+            Slider(value: autoScrollSpeedBinding, in: 0.1...3, step: 0.1)
+                .labelsHidden()
+                .controlSize(.mini)
+                .frame(width: 68)
+                .accessibilityLabel("自动滚动速度")
+                .accessibilityValue(
+                    String(format: "%.1f 行/秒", state.preferences.autoScrollSpeed)
+                )
+                .accessibilityIdentifier("主持滚动速度")
+
+            Text(String(format: "%.1f", state.preferences.autoScrollSpeed))
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .frame(width: 22, alignment: .trailing)
+                .accessibilityIdentifier("主持滚动速度数值")
+        }
+        .frame(height: 24)
+        .help("自动滚动速度（⌥⌘← / ⌥⌘→）")
     }
 
     private var separator: some View {
@@ -244,6 +270,13 @@ struct PresenterView: View {
 
     private var textAlignment: Alignment {
         state.preferences.alignment == .center ? .center : .leading
+    }
+
+    private var autoScrollSpeedBinding: Binding<Double> {
+        Binding(
+            get: { state.preferences.autoScrollSpeed },
+            set: { value in coordinator.setAutoScrollSpeed(value) }
+        )
     }
 
     private func showControls() {

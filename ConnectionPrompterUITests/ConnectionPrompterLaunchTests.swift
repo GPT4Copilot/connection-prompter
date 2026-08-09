@@ -145,6 +145,43 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         XCTAssertTrue(app.buttons["开始自动滚动"].waitForExistence(timeout: 2))
     }
 
+    func testPresenterProvidesDraggableAutoScrollSpeedControl() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        replaceText(
+            in: app.textViews["文稿正文"],
+            with: (1...12).map { "速度测试第\($0)行" }.joined(separator: "\n")
+        )
+        app.buttons["进入主持"].click()
+
+        let presenter = app.dialogs["主持浮窗"]
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
+        presenter.hover()
+
+        let speedSlider = presenter.sliders["主持滚动速度"]
+        let speedValue = presenter.staticTexts["主持滚动速度数值"]
+        XCTAssertTrue(speedSlider.waitForExistence(timeout: 2))
+        XCTAssertEqual(speedValue.value as? String, "0.5")
+
+        speedSlider.adjust(toNormalizedSliderPosition: 1)
+
+        let updatedValue = NSPredicate(format: "value != %@", "0.5")
+        expectation(for: updatedValue, evaluatedWith: speedValue)
+        waitForExpectations(timeout: 2)
+        XCTAssertGreaterThan(Double(speedValue.value as? String ?? "") ?? 0, 0.5)
+        attachScreenshot(of: presenter, named: "presenter-speed-control")
+
+        let peopleViewButton = presenter.buttons["People View"]
+        XCTAssertTrue(peopleViewButton.waitForExistence(timeout: 2))
+        peopleViewButton.click()
+        XCTAssertEqual(presenter.frame.width, 520, accuracy: 2)
+        presenter.hover()
+        XCTAssertTrue(presenter.sliders["主持滚动速度"].waitForExistence(timeout: 2))
+        attachScreenshot(of: presenter, named: "presenter-speed-control-people-view")
+    }
+
     private func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
