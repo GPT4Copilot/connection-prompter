@@ -9,7 +9,7 @@
 `isMovableByWindowBackground = true`。当前速度控件使用 SwiftUI `Slider`；在实际命中的
 `NSHostingView` 上，AppKit 的 `mouseDownCanMoveWindow` 为 `true`，所以滑杆的连续横向拖动会同时触发窗口移动。
 
-本地 AppKit 探针确认：原生 `NSSlider.mouseDownCanMoveWindow` 为 `false`。因此问题应在速度控件的视图边界解决，不应关闭整个浮窗的背景拖动。
+本地 AppKit 探针确认：即使原生 `NSSlider.mouseDownCanMoveWindow` 为 `false`，macOS 26 的 SwiftUI 宿主层仍会先触发系统背景拖窗。三种控件级排除实现都在真实拖拽测试中产生相同的 35 点窗口位移，因此必须关闭系统自动背景拖窗，并显式划定可拖区域。
 
 ## 已确认的需求
 
@@ -25,14 +25,15 @@
 
 ## 方案
 
-### 1. 使用原生滑杆隔离窗口拖动
+### 1. 使用显式正文拖窗隔离工具栏
 
-新增一个很小的 `NSViewRepresentable`，内部使用 `NSSlider`。滑杆保持当前 68 点宽度、mini 尺寸、连续更新和 0.1 步进。目标动作只把数值送回现有 SwiftUI `Binding`，最终仍由
-`AppCoordinator.setAutoScrollSpeed(_:)` 和 `AppState.setAutoScrollSpeed(_:)` 负责归一化与持久化。
+关闭 `NSPanel.isMovableByWindowBackground`，避免系统在 SwiftUI 控件处理事件之前移动窗口。保留现有 SwiftUI `Slider`、68 点宽度、mini 尺寸、连续更新、辅助功能信息和 0.1 步进。
 
-滑杆视图明确返回 `mouseDownCanMoveWindow = false`。只隔离该控件的鼠标事件；`NSPanel.isMovableByWindowBackground` 保持开启，因此正文和工具栏空白处的拖窗能力不变。
+专用 `PresenterPanel` 在 `sendEvent(_:)` 中检查鼠标按下位置：顶部 50 点属于工具栏交互区，外围 6 点保留给窗口缩放；其余正文/背景区域调用 `NSWindow.performDrag(with:)`。这条路径发生在 SwiftUI 事件分发之前，因此工具栏内任何控件都不会带动窗口，正文和背景空白仍可移动浮窗。
 
-现有辅助功能名称、标识符和实时数值文本继续保留，UI 自动化仍能把它识别为滑杆。
+`NSHostingView` 使用从顶部向下增长的翻转坐标系，因此显式拖动条件为 `location.y > 50`，而不是按普通 AppKit 底部原点计算。
+
+窗口缩放、位置记录、People View、鼠标穿透和辅助功能路径保持不变。
 
 ### 2. 在现有本地键盘路由中增加左右键
 
@@ -55,7 +56,7 @@
 - 不改变速度范围、步进或自动滚动算法。
 - 不改变工具栏布局和视觉样式。
 - 不把无修饰方向键注册为跨应用全局快捷键。
-- 不重写浮窗的整体拖动架构。
+- 不改变窗口尺寸约束、位置持久化或缩放行为。
 
 ## 完成标准
 

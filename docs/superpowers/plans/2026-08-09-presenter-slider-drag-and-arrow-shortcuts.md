@@ -4,14 +4,14 @@
 
 **Goal:** Prevent the presenter speed slider from moving its window, add unmodified presenter-only arrow-key controls, and ship Connection Prompter 1.2.1.
 
-**Architecture:** Replace only the SwiftUI presenter speed slider with a small `NSViewRepresentable` backed by an `NSSlider` subclass whose `mouseDownCanMoveWindow` is `false`; the panel keeps background dragging enabled everywhere else. Extend the existing local key monitor for unmodified left/right keys and reuse the existing coordinator methods, while leaving the global `⌥⌘` shortcuts unchanged.
+**Architecture:** Disable AppKit's automatic background dragging and let a dedicated `PresenterPanel.sendEvent(_:)` call `NSWindow.performDrag(with:)` only below the top 50-point toolbar interaction band and outside the 6-point resize edge; the existing SwiftUI speed slider then receives its drag without moving the panel. Extend the existing local key monitor for unmodified left/right keys and reuse the existing coordinator methods, while leaving the global `⌥⌘` shortcuts unchanged.
 
-**Tech Stack:** Swift 6, SwiftUI, AppKit (`NSPanel`, `NSSlider`, `NSViewRepresentable`), XCTest/XCUITest, Xcode 26 command-line build tools.
+**Tech Stack:** Swift 6, SwiftUI, AppKit (`NSPanel`, `NSHostingView`), XCTest/XCUITest, Xcode 26 command-line build tools.
 
 ## Global Constraints
 
 - Support macOS 14.0 and later on arm64 only.
-- Preserve `NSPanel.isMovableByWindowBackground = true` outside the speed slider.
+- Preserve window movement from the presenter content/background while reserving the top 50 points for toolbar interaction.
 - Keep the speed range at `0.1...3.0` with `0.1` increments.
 - Unmodified arrow keys act only while the presenter is visible, the app receives keyboard input, no modifier is held, and a text editor is not the first responder.
 - Preserve `Space` for next page and all six existing global `⌥⌘` hotkeys.
@@ -22,27 +22,22 @@
 
 ## File Structure
 
-- Create `ConnectionPrompter/PresenterSpeedSlider.swift`: focused AppKit bridge for a native, non-window-dragging speed slider.
-- Modify `ConnectionPrompter/PresenterView.swift`: replace only the toolbar's SwiftUI `Slider` with `PresenterSpeedSlider`.
-- Modify `ConnectionPrompter/PresenterPanelController.swift`: route unmodified left/right arrow keys to existing speed adjustment methods.
+- Modify `ConnectionPrompter/PresenterPanelController.swift`: disable automatic background dragging, add explicit content/background dragging, and route unmodified left/right arrow keys.
 - Modify `ConnectionPrompterUITests/ConnectionPrompterLaunchTests.swift`: physical pointer-drag and presenter arrow-key regression coverage.
 - Modify `ConnectionPrompter.xcodeproj/project.pbxproj`: bump app marketing/build versions for 1.2.1.
 - Modify `README.md`: describe the fixed slider behavior, local arrow keys, and new artifact path.
 
-The Xcode project uses file-system-synchronized groups, so the new Swift file is included automatically and does not require a project-file source entry.
-
 ### Task 1: Keep Speed Slider Drag Inside the Control
 
 **Files:**
-- Create: `ConnectionPrompter/PresenterSpeedSlider.swift`
-- Modify: `ConnectionPrompter/PresenterView.swift:207-226`
+- Modify: `ConnectionPrompter/PresenterPanelController.swift:33,164-190`
 - Test: `ConnectionPrompterUITests/ConnectionPrompterLaunchTests.swift:147-182`
 
 **Interfaces:**
-- Consumes: `Binding<Double>`, range `ClosedRange<Double>`, step `Double`, and the existing `AppCoordinator.setAutoScrollSpeed(_:)` binding path.
-- Produces: `PresenterSpeedSlider(value:range:step:)`, rendered as an accessible native slider with identifier `主持滚动速度`.
+- Consumes: `NSEvent.locationInWindow`, the existing 50-point toolbar layout, a 6-point resize edge, and `NSWindow.performDrag(with:)`.
+- Produces: automatic background dragging disabled; explicit panel-level dragging below the toolbar and inside the resize edge; existing SwiftUI slider unchanged.
 
-- [ ] **Step 1: Replace the AX-only slider adjustment with a physical-drag regression test**
+- [x] **Step 1: Replace the AX-only slider adjustment with a physical-drag regression test**
 
 In `testPresenterProvidesDraggableAutoScrollSpeedControl`, replace the current `adjust(toNormalizedSliderPosition:)` block with a real pointer drag and frame assertions:
 
@@ -84,7 +79,7 @@ After the existing People View screenshot assertions, verify that a non-control 
         )
 ```
 
-- [ ] **Step 2: Run the focused UI test and verify the red state**
+- [x] **Step 2: Run the focused UI test and verify the red state**
 
 Run:
 
@@ -94,95 +89,43 @@ xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompt
 
 Expected: FAIL because the physical speed-slider drag changes the presenter's `minX` and/or `minY`. The failure must be at a frame-equality assertion, not at launch or element lookup.
 
-- [ ] **Step 3: Add the native drag-excluding slider**
+- [x] **Step 3: Replace automatic background dragging with an explicit content drag region**
 
-Create `ConnectionPrompter/PresenterSpeedSlider.swift`:
+In `PresenterPanelController.init`, set:
 
 ```swift
-import AppKit
-import SwiftUI
-
-struct PresenterSpeedSlider: NSViewRepresentable {
-    @Binding var value: Double
-    let range: ClosedRange<Double>
-    let step: Double
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(value: $value, range: range, step: step)
-    }
-
-    func makeNSView(context: Context) -> NonWindowDraggingSlider {
-        let slider = NonWindowDraggingSlider(
-            value: value,
-            minValue: range.lowerBound,
-            maxValue: range.upperBound,
-            target: context.coordinator,
-            action: #selector(Coordinator.valueChanged(_:))
-        )
-        slider.controlSize = .mini
-        slider.isContinuous = true
-        slider.setAccessibilityLabel("自动滚动速度")
-        slider.setAccessibilityIdentifier("主持滚动速度")
-        return slider
-    }
-
-    func updateNSView(
-        _ slider: NonWindowDraggingSlider,
-        context: Context
-    ) {
-        context.coordinator.value = $value
-        slider.minValue = range.lowerBound
-        slider.maxValue = range.upperBound
-        if abs(slider.doubleValue - value) > 0.0001 {
-            slider.doubleValue = value
-        }
-        slider.setAccessibilityValue(String(format: "%.1f 行/秒", value))
-    }
-
-    final class Coordinator: NSObject {
-        var value: Binding<Double>
-        let range: ClosedRange<Double>
-        let step: Double
-
-        init(
-            value: Binding<Double>,
-            range: ClosedRange<Double>,
-            step: Double
-        ) {
-            self.value = value
-            self.range = range
-            self.step = step
-        }
-
-        @objc func valueChanged(_ sender: NSSlider) {
-            let steps = ((sender.doubleValue - range.lowerBound) / step).rounded()
-            let snapped = range.lowerBound + steps * step
-            let clamped = min(max(snapped, range.lowerBound), range.upperBound)
-            sender.doubleValue = clamped
-            value.wrappedValue = clamped
-        }
-    }
-}
-
-final class NonWindowDraggingSlider: NSSlider {
-    override var mouseDownCanMoveWindow: Bool { false }
-}
+        panel.isMovableByWindowBackground = false
 ```
 
-In `PresenterView.autoScrollSpeedControl`, replace only the current SwiftUI `Slider` and its attached slider modifiers with:
+Add a dedicated panel subclass before `PresenterPanelController`:
 
 ```swift
-            PresenterSpeedSlider(
-                value: autoScrollSpeedBinding,
-                range: 0.1...3,
-                step: 0.1
+private final class PresenterPanel: NSPanel {
+    private let toolbarInteractionHeight: CGFloat = 50
+    private let resizeHandleInset: CGFloat = 6
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDown, let contentView {
+            let location = contentView.convert(event.locationInWindow, from: nil)
+            let dragBounds = contentView.bounds.insetBy(
+                dx: resizeHandleInset,
+                dy: resizeHandleInset
             )
-            .frame(width: 68, height: 16)
+            if dragBounds.contains(location),
+               location.y > toolbarInteractionHeight {
+                performDrag(with: event)
+                return
+            }
+        }
+        super.sendEvent(event)
+    }
+}
 ```
 
-Keep the speedometer image, live numeric `Text`, containing `HStack`, and help text unchanged.
+Construct `PresenterPanel` instead of `NSPanel`, and keep the existing SwiftUI slider unchanged.
+`NSHostingView` uses a flipped coordinate system, so `location.y > 50` means the pointer is below the top toolbar.
 
-- [ ] **Step 4: Run the focused UI test and verify the green state**
+- [x] **Step 4: Run the focused UI test and verify the green state**
 
 Run:
 
@@ -190,14 +133,14 @@ Run:
 xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompter -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData-121 -resultBundlePath build/PresenterSliderDragGreen.xcresult -only-testing:ConnectionPrompterUITests/ConnectionPrompterLaunchTests/testPresenterProvidesDraggableAutoScrollSpeedControl test
 ```
 
-Expected: PASS. The speed value changes, the slider drag leaves the panel frame unchanged, People View still exposes the slider at 520 points, and the later background drag moves the panel.
+Expected: PASS. The speed value changes, the slider drag leaves the panel frame unchanged, People View still exposes the slider at 520 points, and the explicit content/background drag moves the panel.
 
-- [ ] **Step 5: Check the focused diff and commit**
+- [x] **Step 5: Check the focused diff and commit**
 
 ```bash
 git diff --check
-git diff -- ConnectionPrompter/PresenterSpeedSlider.swift ConnectionPrompter/PresenterView.swift ConnectionPrompterUITests/ConnectionPrompterLaunchTests.swift
-git add ConnectionPrompter/PresenterSpeedSlider.swift ConnectionPrompter/PresenterView.swift ConnectionPrompterUITests/ConnectionPrompterLaunchTests.swift
+git diff -- ConnectionPrompter/PresenterPanelController.swift ConnectionPrompterUITests/ConnectionPrompterLaunchTests.swift
+git add ConnectionPrompter/PresenterPanelController.swift ConnectionPrompterUITests/ConnectionPrompterLaunchTests.swift docs/superpowers/specs/2026-08-09-presenter-slider-drag-and-arrow-shortcuts-design.md docs/superpowers/plans/2026-08-09-presenter-slider-drag-and-arrow-shortcuts.md
 git commit -m "fix: keep presenter speed drag inside slider"
 ```
 

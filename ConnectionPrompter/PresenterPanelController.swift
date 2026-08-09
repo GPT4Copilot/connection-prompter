@@ -1,6 +1,27 @@
 import AppKit
 import SwiftUI
 
+private final class PresenterPanel: NSPanel {
+    private let toolbarInteractionHeight: CGFloat = 50
+    private let resizeHandleInset: CGFloat = 6
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDown, let contentView {
+            let location = contentView.convert(event.locationInWindow, from: nil)
+            let dragBounds = contentView.bounds.insetBy(
+                dx: resizeHandleInset,
+                dy: resizeHandleInset
+            )
+            if dragBounds.contains(location),
+               location.y > toolbarInteractionHeight {
+                performDrag(with: event)
+                return
+            }
+        }
+        super.sendEvent(event)
+    }
+}
+
 @MainActor
 final class PresenterPanelController: NSObject, NSWindowDelegate {
     private let coordinator: AppCoordinator
@@ -14,7 +35,7 @@ final class PresenterPanelController: NSObject, NSWindowDelegate {
 
     init(coordinator: AppCoordinator) {
         self.coordinator = coordinator
-        panel = NSPanel(
+        panel = PresenterPanel(
             contentRect: NSRect(x: 0, y: 0, width: 640, height: 180),
             styleMask: [.borderless, .nonactivatingPanel, .resizable, .fullSizeContentView],
             backing: .buffered,
@@ -30,7 +51,7 @@ final class PresenterPanelController: NSObject, NSWindowDelegate {
         panel.hasShadow = false
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
-        panel.isMovableByWindowBackground = true
+        panel.isMovableByWindowBackground = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.animationBehavior = .utilityWindow
         panel.minSize = NSSize(width: 500, height: 120)

@@ -149,10 +149,7 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         app.launch()
         app.activate()
 
-        replaceText(
-            in: app.textViews["文稿正文"],
-            with: (1...12).map { "速度测试第\($0)行" }.joined(separator: "\n")
-        )
+        replaceText(in: app.textViews["文稿正文"], with: "速度拖拽测试")
         app.buttons["进入主持"].click()
 
         let presenter = app.dialogs["主持浮窗"]
@@ -164,12 +161,22 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         XCTAssertTrue(speedSlider.waitForExistence(timeout: 2))
         XCTAssertEqual(speedValue.value as? String, "0.5")
 
-        speedSlider.adjust(toNormalizedSliderPosition: 1)
+        let originalFrame = presenter.frame
+        let dragStart = speedSlider.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)
+        )
+        let dragEnd = speedSlider.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5)
+        )
+
+        dragStart.press(forDuration: 0.1, thenDragTo: dragEnd)
 
         let updatedValue = NSPredicate(format: "value != %@", "0.5")
         expectation(for: updatedValue, evaluatedWith: speedValue)
         waitForExpectations(timeout: 2)
         XCTAssertGreaterThan(Double(speedValue.value as? String ?? "") ?? 0, 0.5)
+        XCTAssertEqual(presenter.frame.minX, originalFrame.minX, accuracy: 1)
+        XCTAssertEqual(presenter.frame.minY, originalFrame.minY, accuracy: 1)
         attachScreenshot(of: presenter, named: "presenter-speed-control")
 
         let peopleViewButton = presenter.buttons["People View"]
@@ -179,6 +186,21 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         presenter.hover()
         XCTAssertTrue(presenter.sliders["主持滚动速度"].waitForExistence(timeout: 2))
         attachScreenshot(of: presenter, named: "presenter-speed-control-people-view")
+
+        let frameBeforeBackgroundDrag = presenter.frame
+        let backgroundStart = presenter.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.90, dy: 0.82)
+        )
+        let backgroundEnd = presenter.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.80, dy: 0.82)
+        )
+
+        backgroundStart.press(forDuration: 0.1, thenDragTo: backgroundEnd)
+
+        XCTAssertGreaterThan(
+            abs(presenter.frame.minX - frameBeforeBackgroundDrag.minX),
+            5
+        )
     }
 
     private func makeApp() -> XCUIApplication {
