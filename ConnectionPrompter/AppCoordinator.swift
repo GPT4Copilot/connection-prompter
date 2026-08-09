@@ -9,6 +9,7 @@ final class AppCoordinator {
     @ObservationIgnored private var panelController: PresenterPanelController?
     @ObservationIgnored private var hotkeyManager: GlobalHotkeyManager?
     @ObservationIgnored private weak var editorWindow: NSWindow?
+    @ObservationIgnored private weak var editorWindowHiddenForPresentation: NSWindow?
     @ObservationIgnored private var editorHiddenForPresentation = false
     @ObservationIgnored private var connected = false
 
@@ -38,10 +39,13 @@ final class AppCoordinator {
     }
 
     func showPresenter() {
+        let wasPresenterVisible = state.presenterVisible
         connectIfNeeded()
         state.showPresenter()
         panelController?.show()
-        hideEditorForPresentationIfNeeded()
+        if !wasPresenterVisible {
+            hideEditorForPresentationIfNeeded()
+        }
     }
 
     func hidePresenter() {
@@ -116,7 +120,11 @@ final class AppCoordinator {
     }
 
     private func locateEditorWindow() -> NSWindow? {
-        editorWindow ?? NSApplication.shared.windows.first { !($0 is NSPanel) }
+        if let editorWindow,
+           NSApplication.shared.windows.contains(where: { $0 === editorWindow }) {
+            return editorWindow
+        }
+        return NSApplication.shared.windows.first { !($0 is NSPanel) }
     }
 
     private func hideEditorForPresentationIfNeeded() {
@@ -129,17 +137,28 @@ final class AppCoordinator {
         }
         editorWindow = window
         window.orderOut(nil)
+        editorWindowHiddenForPresentation = window
         editorHiddenForPresentation = true
     }
 
     private func restoreEditorIfPresentationHidIt() {
         guard editorHiddenForPresentation else { return }
+        let window = editorWindowHiddenForPresentation
         editorHiddenForPresentation = false
-        showEditorWindow()
+        editorWindowHiddenForPresentation = nil
+        guard let window,
+              NSApplication.shared.windows.contains(where: { $0 === window }) else {
+            return
+        }
+        showEditorWindow(window)
     }
 
     private func showEditorWindow() {
         guard let window = locateEditorWindow() else { return }
+        showEditorWindow(window)
+    }
+
+    private func showEditorWindow(_ window: NSWindow) {
         editorWindow = window
         NSApplication.shared.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
