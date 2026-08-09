@@ -1,16 +1,136 @@
 import AppKit
 import SwiftUI
 
+private let presenterResizeHandleInset: CGFloat = 6
+
+enum PresenterResizeEdge: Equatable {
+    case topLeft
+    case top
+    case topRight
+    case left
+    case right
+    case bottomLeft
+    case bottom
+    case bottomRight
+
+    var cursor: NSCursor {
+        if #available(macOS 15.0, *) {
+            return NSCursor.frameResize(
+                position: frameResizePosition,
+                directions: .all
+            )
+        }
+        switch self {
+        case .top, .bottom:
+            return .resizeUpDown
+        case .left, .right, .topLeft, .topRight, .bottomLeft, .bottomRight:
+            return .resizeLeftRight
+        }
+    }
+
+    @available(macOS 15.0, *)
+    private var frameResizePosition: NSCursor.FrameResizePosition {
+        switch self {
+        case .topLeft: .topLeft
+        case .top: .top
+        case .topRight: .topRight
+        case .left: .left
+        case .right: .right
+        case .bottomLeft: .bottomLeft
+        case .bottom: .bottom
+        case .bottomRight: .bottomRight
+        }
+    }
+}
+
+struct PresenterResizeCursorRegion: Equatable {
+    let edge: PresenterResizeEdge
+    let rect: NSRect
+
+    static func regions(in bounds: NSRect, inset: CGFloat) -> [Self] {
+        let horizontalLength = max(bounds.width - inset * 2, 0)
+        let verticalLength = max(bounds.height - inset * 2, 0)
+        return [
+            Self(
+                edge: .topLeft,
+                rect: NSRect(x: bounds.minX, y: bounds.minY, width: inset, height: inset)
+            ),
+            Self(
+                edge: .top,
+                rect: NSRect(
+                    x: bounds.minX + inset,
+                    y: bounds.minY,
+                    width: horizontalLength,
+                    height: inset
+                )
+            ),
+            Self(
+                edge: .topRight,
+                rect: NSRect(
+                    x: bounds.maxX - inset,
+                    y: bounds.minY,
+                    width: inset,
+                    height: inset
+                )
+            ),
+            Self(
+                edge: .left,
+                rect: NSRect(
+                    x: bounds.minX,
+                    y: bounds.minY + inset,
+                    width: inset,
+                    height: verticalLength
+                )
+            ),
+            Self(
+                edge: .right,
+                rect: NSRect(
+                    x: bounds.maxX - inset,
+                    y: bounds.minY + inset,
+                    width: inset,
+                    height: verticalLength
+                )
+            ),
+            Self(
+                edge: .bottomLeft,
+                rect: NSRect(
+                    x: bounds.minX,
+                    y: bounds.maxY - inset,
+                    width: inset,
+                    height: inset
+                )
+            ),
+            Self(
+                edge: .bottom,
+                rect: NSRect(
+                    x: bounds.minX + inset,
+                    y: bounds.maxY - inset,
+                    width: horizontalLength,
+                    height: inset
+                )
+            ),
+            Self(
+                edge: .bottomRight,
+                rect: NSRect(
+                    x: bounds.maxX - inset,
+                    y: bounds.maxY - inset,
+                    width: inset,
+                    height: inset
+                )
+            ),
+        ]
+    }
+}
+
 private final class PresenterPanel: NSPanel {
     private let toolbarInteractionHeight: CGFloat = 50
-    private let resizeHandleInset: CGFloat = 6
 
     override func sendEvent(_ event: NSEvent) {
         if event.type == .leftMouseDown, let contentView {
             let location = contentView.convert(event.locationInWindow, from: nil)
             let dragBounds = contentView.bounds.insetBy(
-                dx: resizeHandleInset,
-                dy: resizeHandleInset
+                dx: presenterResizeHandleInset,
+                dy: presenterResizeHandleInset
             )
             if dragBounds.contains(location),
                location.y > toolbarInteractionHeight {
@@ -215,6 +335,16 @@ private final class PrompterHostingView<Content: View>: NSHostingView<Content> {
     var onNavigationKey: ((Int) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        for region in PresenterResizeCursorRegion.regions(
+            in: bounds,
+            inset: presenterResizeHandleInset
+        ) {
+            addCursorRect(region.rect, cursor: region.edge.cursor)
+        }
+    }
 
     override func scrollWheel(with event: NSEvent) {
         onScroll?(event.scrollingDeltaY, event.hasPreciseScrollingDeltas)
