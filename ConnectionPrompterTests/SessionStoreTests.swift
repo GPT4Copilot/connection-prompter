@@ -65,6 +65,40 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertEqual(restored?.preferences.autoScrollSpeed, 0.5)
         XCTAssertEqual(restored?.scrollOffset, 0)
         XCTAssertFalse(restored?.autoScrollRunning ?? true)
+        XCTAssertTrue(
+            restored?.preferences.shouldHideEditorWhenPresenting ?? false
+        )
+    }
+
+    func testVersionTwoSessionWithoutScenePreferenceDefaultsToHidingEditor() throws {
+        let store = FileSessionStore(directoryURL: directoryURL)
+        try store.save(fixtureSession(title: "旧版会话", currentPage: 0))
+        let data = try Data(contentsOf: store.primaryURL)
+        var root = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        var session = try XCTUnwrap(root["session"] as? [String: Any])
+        var preferences = try XCTUnwrap(session["preferences"] as? [String: Any])
+        preferences.removeValue(forKey: "hideEditorWhenPresenting")
+        session["preferences"] = preferences
+        root["session"] = session
+        try JSONSerialization.data(withJSONObject: root).write(to: store.primaryURL)
+
+        let restored = try XCTUnwrap(store.load())
+
+        XCTAssertTrue(restored.preferences.shouldHideEditorWhenPresenting)
+    }
+
+    func testDisabledScenePreferenceRoundTrips() throws {
+        let store = FileSessionStore(directoryURL: directoryURL)
+        var session = fixtureSession(title: "保留编辑页", currentPage: 0)
+        session.preferences.shouldHideEditorWhenPresenting = false
+
+        try store.save(session)
+
+        XCTAssertFalse(
+            try XCTUnwrap(store.load()).preferences.shouldHideEditorWhenPresenting
+        )
     }
 
     private func fixtureSession(title: String, currentPage: Int) -> RestorableSession {

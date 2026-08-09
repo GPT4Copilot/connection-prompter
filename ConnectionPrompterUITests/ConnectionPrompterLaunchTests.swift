@@ -258,6 +258,26 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         waitForExpectations(timeout: 2)
     }
 
+    func testSceneSettingDefaultsToHideEditor() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        let setting = app.checkBoxes["主持时隐藏编辑页"]
+        XCTAssertTrue(setting.waitForExistence(timeout: 3))
+        XCTAssertEqual((setting.value as? NSNumber)?.intValue, 1)
+
+        setting.click()
+        XCTAssertEqual((setting.value as? NSNumber)?.intValue, 0)
+        Thread.sleep(forTimeInterval: 0.6)
+        app.terminate()
+
+        app.launch()
+        let restoredSetting = app.checkBoxes["主持时隐藏编辑页"]
+        XCTAssertTrue(restoredSetting.waitForExistence(timeout: 3))
+        XCTAssertEqual((restoredSetting.value as? NSNumber)?.intValue, 0)
+    }
+
     private func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]

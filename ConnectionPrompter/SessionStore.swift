@@ -130,7 +130,8 @@ private struct PersistedSessionV1: Decodable {
                 blurEnabled: session.preferences.blurEnabled,
                 alwaysOnTop: session.preferences.alwaysOnTop,
                 clickThrough: session.preferences.clickThrough,
-                peopleView: session.preferences.peopleView
+                peopleView: session.preferences.peopleView,
+                hideEditorWhenPresenting: true
             ),
             presenterVisible: session.presenterVisible
         )

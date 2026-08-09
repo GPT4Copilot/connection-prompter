@@ -2,6 +2,20 @@ import XCTest
 @testable import ConnectionPrompter
 
 final class PrompterPreferencesTests: XCTestCase {
+    func testMissingScenePreferenceDefaultsToHidingTheEditor() {
+        var preferences = PrompterPreferences.standard
+        XCTAssertEqual(preferences.hideEditorWhenPresenting, true)
+
+        preferences.hideEditorWhenPresenting = nil
+
+        XCTAssertTrue(preferences.shouldHideEditorWhenPresenting)
+
+        preferences.shouldHideEditorWhenPresenting = false
+
+        XCTAssertFalse(preferences.shouldHideEditorWhenPresenting)
+        XCTAssertEqual(preferences.hideEditorWhenPresenting, false)
+    }
+
     func testPeopleViewOverridesLayoutWithoutChangingBackgroundTransparency() {
         var preferences = PrompterPreferences.standard
         preferences.backgroundTransparency = 0.82

@@ -158,6 +158,7 @@ struct PrompterPreferences: Codable, Equatable, Sendable {
     var alwaysOnTop: Bool
     var clickThrough: Bool
     var peopleView: Bool
+    var hideEditorWhenPresenting: Bool? = true
 
     static let standard = PrompterPreferences(
         fontSize: 32,
@@ -169,7 +170,8 @@ struct PrompterPreferences: Codable, Equatable, Sendable {
         blurEnabled: true,
         alwaysOnTop: true,
         clickThrough: false,
-        peopleView: false
+        peopleView: false,
+        hideEditorWhenPresenting: true
     )
 
     var effectiveStyle: EffectivePrompterStyle {
@@ -192,6 +194,11 @@ struct PrompterPreferences: Codable, Equatable, Sendable {
     var backgroundOpacity: Double {
         get { 1 - backgroundTransparency }
         set { backgroundTransparency = 1 - min(max(newValue, 0), 1) }
+    }
+
+    var shouldHideEditorWhenPresenting: Bool {
+        get { hideEditorWhenPresenting ?? true }
+        set { hideEditorWhenPresenting = newValue }
     }
 }
 

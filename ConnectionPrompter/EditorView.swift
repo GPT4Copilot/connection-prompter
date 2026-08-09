@@ -69,6 +69,13 @@ struct EditorView: View {
                     HStack(spacing: 14) {
                         Label("自动保存", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.secondary)
+                        Toggle(
+                            "主持时隐藏编辑页",
+                            isOn: hideEditorWhenPresentingBinding
+                        )
+                        .toggleStyle(.checkbox)
+                        .controlSize(.small)
+                        .accessibilityIdentifier("主持时隐藏编辑页")
                         Spacer()
                         Text("\(state.characterCount) 字符")
                         Text("\(state.segmentCount) 段")
@@ -191,6 +198,17 @@ struct EditorView: View {
         Binding(
             get: { state.preferences.alignment },
             set: { value in coordinator.updatePreferences { $0.alignment = value } }
+        )
+    }
+
+    private var hideEditorWhenPresentingBinding: Binding<Bool> {
+        Binding(
+            get: { state.preferences.shouldHideEditorWhenPresenting },
+            set: { value in
+                coordinator.updatePreferences {
+                    $0.shouldHideEditorWhenPresenting = value
+                }
+            }
         )
     }
 }
