@@ -114,9 +114,17 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
 
         app.buttons["进入主持"].click()
-        XCTAssertTrue(app.dialogs["主持浮窗"].waitForExistence(timeout: 3))
+        let presenter = app.dialogs["主持浮窗"]
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["完全透明时文字仍然清楚"].exists)
         attachScreenScreenshot(named: "fully-transparent-presenter")
+
+        presenter.hover()
+        let peopleViewButton = presenter.buttons["People View"]
+        XCTAssertTrue(peopleViewButton.waitForExistence(timeout: 2))
+        peopleViewButton.click()
+        XCTAssertEqual(presenter.frame.width, 520, accuracy: 2)
+        attachScreenScreenshot(named: "fully-transparent-presenter-people-view")
     }
 
     func testPresenterCanStartAndPauseAutomaticScrolling() {

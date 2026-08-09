@@ -178,7 +178,7 @@ struct PrompterPreferences: Codable, Equatable, Sendable {
                 panelWidth: 520,
                 panelHeight: 140,
                 maximumLines: 2,
-                backgroundOpacity: 0.45
+                backgroundOpacity: 1 - min(max(backgroundTransparency, 0), 1)
             )
         }
         return EffectivePrompterStyle(
