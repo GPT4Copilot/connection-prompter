@@ -313,7 +313,7 @@ git add README.md ConnectionPrompter.xcodeproj/project.pbxproj
 git commit -m "docs: prepare Connection Prompter 1.2.1"
 ```
 
-- [ ] **Step 3: Run the complete Debug TestAction suite**
+- [x] **Step 3: Run the complete Debug TestAction suite**
 
 ```bash
 xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompter -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData-121 -resultBundlePath build/ConnectionPrompter121Final.xcresult test
@@ -321,7 +321,7 @@ xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompt
 
 Expected: all unit and UI tests PASS with zero failures or skips.
 
-- [ ] **Step 4: Read the exact final test summary and export screenshots**
+- [x] **Step 4: Read the exact final test summary and export screenshots**
 
 ```bash
 xcrun xcresulttool get test-results summary --path build/ConnectionPrompter121Final.xcresult
@@ -330,7 +330,7 @@ xcrun xcresulttool export attachments --path build/ConnectionPrompter121Final.xc
 
 Expected: result `Passed`, failed tests `0`, skipped tests `0`. Inspect the presenter speed screenshots and confirm the native slider remains aligned and unclipped at 640-point and 520-point toolbar widths.
 
-- [ ] **Step 5: Produce a clean Release build**
+- [x] **Step 5: Produce a clean Release build**
 
 ```bash
 xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompter -configuration Release -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData-121 clean build
@@ -338,7 +338,7 @@ xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompt
 
 Expected: build exits 0 and creates `build/DerivedData-121/Build/Products/Release/Connection Prompter.app`.
 
-- [ ] **Step 6: Copy and zip without overwriting 1.2**
+- [x] **Step 6: Copy and zip without overwriting 1.2**
 
 First verify that neither destination exists:
 
@@ -354,7 +354,7 @@ ditto 'build/DerivedData-121/Build/Products/Release/Connection Prompter.app' '/U
 ditto -c -k --sequesterRsrc --keepParent '/Users/fois/Documents/ChatGPT/屏幕文字显示APP/dist/Connection Prompter 1.2.1.app' '/Users/fois/Documents/ChatGPT/屏幕文字显示APP/dist/Connection Prompter 1.2.1.zip'
 ```
 
-- [ ] **Step 7: Verify the delivered artifacts**
+- [x] **Step 7: Verify the delivered artifacts**
 
 ```bash
 codesign --verify --deep --strict --verbose=2 '/Users/fois/Documents/ChatGPT/屏幕文字显示APP/dist/Connection Prompter 1.2.1.app'
@@ -368,7 +368,7 @@ shasum -a 256 '/Users/fois/Documents/ChatGPT/屏幕文字显示APP/dist/Connecti
 
 Expected: code signature valid, sandbox entitlement present, version `1.2.1`, build `4`, architecture `arm64`, ZIP reports no errors, and a SHA-256 checksum is printed.
 
-- [ ] **Step 8: Confirm the source handoff is clean**
+- [x] **Step 8: Confirm the source handoff is clean**
 
 ```bash
 git diff --check
