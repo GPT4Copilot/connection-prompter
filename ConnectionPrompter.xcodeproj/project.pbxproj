@@ -319,7 +319,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -327,7 +327,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Connection Prompter";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.connectionprompter.app;
 				PRODUCT_MODULE_NAME = ConnectionPrompter;
 				PRODUCT_NAME = "Connection Prompter";
@@ -350,14 +350,14 @@
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Connection Prompter";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.connectionprompter.app;
 				PRODUCT_MODULE_NAME = ConnectionPrompter;
 				PRODUCT_NAME = "Connection Prompter";
