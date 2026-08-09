@@ -74,8 +74,7 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         title.typeText("季度分享")
 
         let editor = app.textViews["文稿正文"]
-        editor.click()
-        editor.typeText("第一段内容")
+        replaceText(in: editor, with: "第一段内容")
         Thread.sleep(forTimeInterval: 0.6)
         app.terminate()
 

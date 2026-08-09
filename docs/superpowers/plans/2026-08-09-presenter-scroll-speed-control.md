@@ -534,18 +534,18 @@ git add README.md ConnectionPrompter.xcodeproj/project.pbxproj
 git commit -m "docs: prepare Connection Prompter 1.2"
 ```
 
-- [ ] **Step 4: Run the full unit test suite in Release configuration**
+- [ ] **Step 4: Run the full unit test suite with the scheme's Debug TestAction**
 
 ```bash
-xcodebuild -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompter -configuration Release -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData-SpeedControl -resultBundlePath build/ConnectionPrompter12Unit.xcresult -only-testing:ConnectionPrompterTests test
+xcodebuild -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompter -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData-SpeedControl -resultBundlePath build/ConnectionPrompter12UnitDebug.xcresult -only-testing:ConnectionPrompterTests test
 ```
 
 Expected: all unit tests pass with zero failures.
 
-- [ ] **Step 5: Run the full UI suite against the Release app**
+- [ ] **Step 5: Run the full UI suite with the scheme's Debug TestAction**
 
 ```bash
-xcodebuild -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompter -configuration Release -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData-SpeedControl -resultBundlePath build/ConnectionPrompter12UI.xcresult -only-testing:ConnectionPrompterUITests test
+xcodebuild -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompter -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData-SpeedControl -resultBundlePath build/ConnectionPrompter12UIDebug.xcresult -only-testing:ConnectionPrompterUITests test
 ```
 
 Expected: all UI tests pass, including launch, multi-document, transparency, auto-scroll, and direct presenter speed control.
@@ -553,12 +553,12 @@ Expected: all UI tests pass, including launch, multi-document, transparency, aut
 - [ ] **Step 6: Record test totals and export final visual evidence**
 
 ```bash
-xcrun xcresulttool get test-results summary --path build/ConnectionPrompter12Unit.xcresult
-xcrun xcresulttool get test-results summary --path build/ConnectionPrompter12UI.xcresult
-xcrun xcresulttool export attachments --path build/ConnectionPrompter12UI.xcresult --output-path build/ConnectionPrompter12UIAttachments
+xcrun xcresulttool get test-results summary --path build/ConnectionPrompter12UnitDebug.xcresult
+xcrun xcresulttool get test-results summary --path build/ConnectionPrompter12UIDebug.xcresult
+xcrun xcresulttool export attachments --path build/ConnectionPrompter12UIDebug.xcresult --output-path build/ConnectionPrompter12UIAttachments
 ```
 
-Inspect `presenter-speed-control` and `presenter-speed-control-people-view` attachments. Confirm the 640 pt and 520 pt layouts are unclipped. During the Release UI run, drag the presenter’s resizable edge to its 500 pt minimum and confirm every control remains visible before returning it to 640 pt.
+Inspect `presenter-speed-control` and `presenter-speed-control-people-view` attachments. Confirm the 640 pt and 520 pt layouts are unclipped and measure the control capsule at no more than 464 logical points, leaving at least 36 points total margin at the 500 pt minimum panel width. The TestAction intentionally remains Debug because unit tests use `@testable import`; the separate clean Release build below verifies the production configuration without enabling testability.
 
 - [ ] **Step 7: Produce a clean Release build**
 
@@ -605,4 +605,4 @@ git status --short --branch
 git log -5 --oneline --decorate
 ```
 
-Expected: source worktree is clean and contains the four implementation/release commits after the design and plan commits. The `.app`, `.zip`, DerivedData, result bundles, and screenshots remain ignored rather than committed.
+Expected: source worktree is clean and contains the focused implementation, release, and verification-plan commits after the design and original plan commits. The `.app`, `.zip`, DerivedData, result bundles, and screenshots remain ignored rather than committed.
