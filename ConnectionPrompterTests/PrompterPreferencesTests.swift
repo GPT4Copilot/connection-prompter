@@ -2,7 +2,21 @@ import XCTest
 @testable import ConnectionPrompter
 
 final class PrompterPreferencesTests: XCTestCase {
-    func testPeopleViewTemporarilyOverridesPresentationWithoutChangingBaseValues() {
+    func testMissingScenePreferenceDefaultsToHidingTheEditor() {
+        var preferences = PrompterPreferences.standard
+        XCTAssertEqual(preferences.hideEditorWhenPresenting, true)
+
+        preferences.hideEditorWhenPresenting = nil
+
+        XCTAssertTrue(preferences.shouldHideEditorWhenPresenting)
+
+        preferences.shouldHideEditorWhenPresenting = false
+
+        XCTAssertFalse(preferences.shouldHideEditorWhenPresenting)
+        XCTAssertEqual(preferences.hideEditorWhenPresenting, false)
+    }
+
+    func testPeopleViewOverridesLayoutWithoutChangingBackgroundTransparency() {
         var preferences = PrompterPreferences.standard
         preferences.backgroundTransparency = 0.82
         preferences.maximumLines = 4
@@ -11,11 +25,19 @@ final class PrompterPreferencesTests: XCTestCase {
         XCTAssertEqual(preferences.effectiveStyle.panelWidth, 520)
         XCTAssertEqual(preferences.effectiveStyle.panelHeight, 140)
         XCTAssertEqual(preferences.effectiveStyle.maximumLines, 2)
-        XCTAssertEqual(preferences.effectiveStyle.backgroundTransparency, 0.55)
+        XCTAssertEqual(
+            preferences.effectiveStyle.backgroundTransparency,
+            0.82,
+            accuracy: 0.0001
+        )
 
         preferences.peopleView = false
 
-        XCTAssertEqual(preferences.effectiveStyle.backgroundTransparency, 0.82)
+        XCTAssertEqual(
+            preferences.effectiveStyle.backgroundTransparency,
+            0.82,
+            accuracy: 0.0001
+        )
         XCTAssertEqual(preferences.effectiveStyle.maximumLines, 4)
     }
 

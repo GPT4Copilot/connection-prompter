@@ -141,6 +141,16 @@ final class AppState {
         scheduleAutosave()
     }
 
+    func setAutoScrollSpeed(_ speed: Double) {
+        let clamped = min(max(speed, 0.1), 3)
+        preferences.autoScrollSpeed = (clamped * 10).rounded() / 10
+        scheduleAutosave()
+    }
+
+    func adjustAutoScrollSpeed(by amount: Double) {
+        setAutoScrollSpeed(preferences.autoScrollSpeed + amount)
+    }
+
     func nextPage() {
         pauseAutoScroll()
         currentPage = PageNavigation.next(from: currentPage, pageCount: pages.count)

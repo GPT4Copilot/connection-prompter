@@ -6,6 +6,8 @@ enum GlobalHotkeyAction: UInt32, Equatable, Sendable {
     case nextPage = 2
     case toggleClickThrough = 3
     case togglePresenter = 4
+    case decreaseAutoScrollSpeed = 5
+    case increaseAutoScrollSpeed = 6
 }
 
 struct HotkeyDescriptor: Equatable, Sendable {
@@ -29,6 +31,20 @@ struct HotkeyDescriptor: Equatable, Sendable {
             keyCode: UInt32(kVK_DownArrow),
             modifiers: UInt32(cmdKey | optionKey),
             displayName: "⌥⌘↓"
+        ),
+        HotkeyDescriptor(
+            action: .decreaseAutoScrollSpeed,
+            identifier: GlobalHotkeyAction.decreaseAutoScrollSpeed.rawValue,
+            keyCode: UInt32(kVK_LeftArrow),
+            modifiers: UInt32(cmdKey | optionKey),
+            displayName: "⌥⌘←"
+        ),
+        HotkeyDescriptor(
+            action: .increaseAutoScrollSpeed,
+            identifier: GlobalHotkeyAction.increaseAutoScrollSpeed.rawValue,
+            keyCode: UInt32(kVK_RightArrow),
+            modifiers: UInt32(cmdKey | optionKey),
+            displayName: "⌥⌘→"
         ),
         HotkeyDescriptor(
             action: .toggleClickThrough,
@@ -144,6 +160,10 @@ final class GlobalHotkeyManager: HotkeyRegistering {
             coordinator.previousPage()
         case .nextPage:
             coordinator.nextPage()
+        case .decreaseAutoScrollSpeed:
+            coordinator.adjustAutoScrollSpeed(by: -0.1)
+        case .increaseAutoScrollSpeed:
+            coordinator.adjustAutoScrollSpeed(by: 0.1)
         case .toggleClickThrough:
             coordinator.toggleClickThrough()
         case .togglePresenter:

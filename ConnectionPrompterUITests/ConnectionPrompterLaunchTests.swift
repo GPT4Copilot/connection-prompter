@@ -74,8 +74,7 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         title.typeText("季度分享")
 
         let editor = app.textViews["文稿正文"]
-        editor.click()
-        editor.typeText("第一段内容")
+        replaceText(in: editor, with: "第一段内容")
         Thread.sleep(forTimeInterval: 0.6)
         app.terminate()
 
@@ -115,9 +114,19 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
 
         app.buttons["进入主持"].click()
-        XCTAssertTrue(app.dialogs["主持浮窗"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["完全透明时文字仍然清楚"].exists)
-        attachScreenScreenshot(named: "fully-transparent-presenter")
+        let presenter = app.dialogs["主持浮窗"]
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
+        let presenterText = presenter.staticTexts["完全透明时文字仍然清楚"]
+        XCTAssertTrue(presenterText.waitForExistence(timeout: 2))
+        attachScreenshot(of: presenter, named: "fully-transparent-presenter")
+
+        presenter.hover()
+        let peopleViewButton = presenter.buttons["People View"]
+        XCTAssertTrue(peopleViewButton.waitForExistence(timeout: 2))
+        peopleViewButton.click()
+        XCTAssertEqual(presenter.frame.width, 520, accuracy: 2)
+        XCTAssertTrue(presenterText.waitForExistence(timeout: 2))
+        attachScreenshot(of: presenter, named: "fully-transparent-presenter-people-view")
     }
 
     func testPresenterCanStartAndPauseAutomaticScrolling() {
@@ -145,6 +154,168 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
         XCTAssertTrue(app.buttons["开始自动滚动"].waitForExistence(timeout: 2))
     }
 
+    func testPresenterProvidesDraggableAutoScrollSpeedControl() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        replaceText(in: app.textViews["文稿正文"], with: "速度拖拽测试")
+        app.buttons["进入主持"].click()
+
+        let presenter = app.dialogs["主持浮窗"]
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
+        presenter.hover()
+
+        let speedSlider = presenter.sliders["主持滚动速度"]
+        let speedValue = presenter.staticTexts["主持滚动速度数值"]
+        XCTAssertTrue(speedSlider.waitForExistence(timeout: 2))
+        XCTAssertEqual(speedValue.value as? String, "0.5")
+
+        let originalFrame = presenter.frame
+        let dragStart = speedSlider.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)
+        )
+        let dragEnd = speedSlider.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5)
+        )
+
+        dragStart.press(forDuration: 0.1, thenDragTo: dragEnd)
+
+        let updatedValue = NSPredicate(format: "value != %@", "0.5")
+        expectation(for: updatedValue, evaluatedWith: speedValue)
+        waitForExpectations(timeout: 2)
+        XCTAssertGreaterThan(Double(speedValue.value as? String ?? "") ?? 0, 0.5)
+        XCTAssertEqual(presenter.frame.minX, originalFrame.minX, accuracy: 1)
+        XCTAssertEqual(presenter.frame.minY, originalFrame.minY, accuracy: 1)
+        attachScreenshot(of: presenter, named: "presenter-speed-control")
+
+        let peopleViewButton = presenter.buttons["People View"]
+        XCTAssertTrue(peopleViewButton.waitForExistence(timeout: 2))
+        peopleViewButton.click()
+        XCTAssertEqual(presenter.frame.width, 520, accuracy: 2)
+        presenter.hover()
+        XCTAssertTrue(presenter.sliders["主持滚动速度"].waitForExistence(timeout: 2))
+        attachScreenshot(of: presenter, named: "presenter-speed-control-people-view")
+
+        let frameBeforeBackgroundDrag = presenter.frame
+        let backgroundStart = presenter.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.90, dy: 0.82)
+        )
+        let backgroundEnd = presenter.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.80, dy: 0.82)
+        )
+
+        backgroundStart.press(forDuration: 0.1, thenDragTo: backgroundEnd)
+
+        XCTAssertGreaterThan(
+            abs(presenter.frame.minX - frameBeforeBackgroundDrag.minX),
+            5
+        )
+    }
+
+    func testPresenterArrowKeysAdjustSpeedAndNavigateText() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        replaceText(
+            in: app.textViews["文稿正文"],
+            with: (1...6).map { "方向\($0)" }.joined(separator: "\n")
+        )
+        app.buttons["进入主持"].click()
+
+        let presenter = app.dialogs["主持浮窗"]
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
+        presenter.hover()
+
+        let speedValue = presenter.staticTexts["主持滚动速度数值"]
+        XCTAssertEqual(speedValue.value as? String, "0.5")
+
+        app.typeKey(.rightArrow, modifierFlags: [])
+        let increased = NSPredicate(format: "value == %@", "0.6")
+        expectation(for: increased, evaluatedWith: speedValue)
+        waitForExpectations(timeout: 2)
+
+        app.typeKey(.leftArrow, modifierFlags: [])
+        let restoredSpeed = NSPredicate(format: "value == %@", "0.5")
+        expectation(for: restoredSpeed, evaluatedWith: speedValue)
+        waitForExpectations(timeout: 2)
+
+        let firstLine = presenter.staticTexts["方向1"]
+        XCTAssertTrue(firstLine.waitForExistence(timeout: 2))
+        let originalY = firstLine.frame.minY
+
+        app.typeKey(.downArrow, modifierFlags: [])
+        let movedUp = NSPredicate { _, _ in firstLine.frame.minY < originalY - 1 }
+        expectation(for: movedUp, evaluatedWith: firstLine)
+        waitForExpectations(timeout: 2)
+
+        app.typeKey(.upArrow, modifierFlags: [])
+        let returned = NSPredicate { _, _ in
+            abs(firstLine.frame.minY - originalY) <= 2
+        }
+        expectation(for: returned, evaluatedWith: firstLine)
+        waitForExpectations(timeout: 2)
+    }
+
+    func testSceneSettingDefaultsToHideEditor() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        let setting = app.checkBoxes["主持时隐藏编辑页"]
+        XCTAssertTrue(setting.waitForExistence(timeout: 3))
+        XCTAssertEqual((setting.value as? NSNumber)?.intValue, 1)
+
+        setting.click()
+        XCTAssertEqual((setting.value as? NSNumber)?.intValue, 0)
+        Thread.sleep(forTimeInterval: 0.6)
+        app.terminate()
+
+        app.launch()
+        let restoredSetting = app.checkBoxes["主持时隐藏编辑页"]
+        XCTAssertTrue(restoredSetting.waitForExistence(timeout: 3))
+        XCTAssertEqual((restoredSetting.value as? NSNumber)?.intValue, 0)
+    }
+
+    func testSceneSettingControlsEditorVisibilityDuringPresentation() {
+        let app = makeApp()
+        app.launch()
+        app.activate()
+
+        let editor = app.textViews["文稿正文"]
+        let setting = app.checkBoxes["主持时隐藏编辑页"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        XCTAssertTrue(setting.waitForExistence(timeout: 2))
+        XCTAssertEqual((setting.value as? NSNumber)?.intValue, 1)
+
+        app.buttons["进入主持"].click()
+
+        let presenter = app.dialogs["主持浮窗"]
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
+        let editorHideDeadline = Date().addingTimeInterval(2)
+        while editor.exists && Date() < editorHideDeadline {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        guard !editor.exists else {
+            app.terminate()
+            XCTFail("进入主持后编辑窗口仍存在")
+            return
+        }
+        presenter.hover()
+        let returnButton = presenter.buttons["返回编辑器"]
+        XCTAssertTrue(returnButton.waitForExistence(timeout: 2))
+        returnButton.click()
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+
+        setting.click()
+        XCTAssertEqual((setting.value as? NSNumber)?.intValue, 0)
+        app.buttons["进入主持"].click()
+
+        XCTAssertTrue(presenter.waitForExistence(timeout: 3))
+        XCTAssertTrue(editor.exists)
+    }
+
     private func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
@@ -155,13 +326,6 @@ final class ConnectionPrompterLaunchTests: XCTestCase {
 
     private func attachScreenshot(of element: XCUIElement, named name: String) {
         let attachment = XCTAttachment(screenshot: element.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
-    }
-
-    private func attachScreenScreenshot(named name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)

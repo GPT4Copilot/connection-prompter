@@ -33,6 +33,19 @@ struct ConnectionPrompterApp: App {
                     .keyboardShortcut(.upArrow, modifiers: [.command, .option])
                 Button("下一页") { coordinator.nextPage() }
                     .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+
+                Divider()
+
+                Button("减慢自动滚动") {
+                    coordinator.adjustAutoScrollSpeed(by: -0.1)
+                }
+                .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+
+                Button("加快自动滚动") {
+                    coordinator.adjustAutoScrollSpeed(by: 0.1)
+                }
+                .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+
                 Button("切换鼠标穿透") { coordinator.toggleClickThrough() }
                     .keyboardShortcut("x", modifiers: [.command, .option])
             }

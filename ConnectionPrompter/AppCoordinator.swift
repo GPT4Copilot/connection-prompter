@@ -8,15 +8,20 @@ final class AppCoordinator {
 
     @ObservationIgnored private var panelController: PresenterPanelController?
     @ObservationIgnored private var hotkeyManager: GlobalHotkeyManager?
+    @ObservationIgnored private weak var editorWindow: NSWindow?
+    @ObservationIgnored private weak var editorWindowHiddenForPresentation: NSWindow?
+    @ObservationIgnored private var editorHiddenForPresentation = false
     @ObservationIgnored private var connected = false
 
-    init(state: AppState) {
+    init(state: AppState, editorWindow: NSWindow? = nil) {
         self.state = state
+        self.editorWindow = editorWindow
     }
 
     func connectIfNeeded() {
         guard !connected else { return }
         connected = true
+        editorWindow = locateEditorWindow()
         let controller = PresenterPanelController(coordinator: self)
         panelController = controller
         controller.syncConfiguration()
@@ -29,18 +34,24 @@ final class AppCoordinator {
         }
         if state.presenterVisible {
             controller.show()
+            hideEditorForPresentationIfNeeded()
         }
     }
 
     func showPresenter() {
+        let wasPresenterVisible = state.presenterVisible
         connectIfNeeded()
         state.showPresenter()
         panelController?.show()
+        if !wasPresenterVisible {
+            hideEditorForPresentationIfNeeded()
+        }
     }
 
     func hidePresenter() {
         state.hidePresenter()
         panelController?.hide()
+        restoreEditorIfPresentationHidIt()
     }
 
     func togglePresenter() {
@@ -61,6 +72,14 @@ final class AppCoordinator {
 
     func resetAutoScroll() {
         state.resetAutoScroll()
+    }
+
+    func setAutoScrollSpeed(_ speed: Double) {
+        state.setAutoScrollSpeed(speed)
+    }
+
+    func adjustAutoScrollSpeed(by amount: Double) {
+        state.adjustAutoScrollSpeed(by: amount)
     }
 
     func manualScroll(by distance: Double) {
@@ -97,9 +116,51 @@ final class AppCoordinator {
 
     func returnToEditor() {
         hidePresenter()
+        showEditorWindow()
+    }
+
+    private func locateEditorWindow() -> NSWindow? {
+        if let editorWindow,
+           NSApplication.shared.windows.contains(where: { $0 === editorWindow }) {
+            return editorWindow
+        }
+        return NSApplication.shared.windows.first { !($0 is NSPanel) }
+    }
+
+    private func hideEditorForPresentationIfNeeded() {
+        guard state.preferences.shouldHideEditorWhenPresenting,
+              !editorHiddenForPresentation,
+              let window = locateEditorWindow(),
+              window.isVisible,
+              !window.isMiniaturized else {
+            return
+        }
+        editorWindow = window
+        window.orderOut(nil)
+        editorWindowHiddenForPresentation = window
+        editorHiddenForPresentation = true
+    }
+
+    private func restoreEditorIfPresentationHidIt() {
+        guard editorHiddenForPresentation else { return }
+        let window = editorWindowHiddenForPresentation
+        editorHiddenForPresentation = false
+        editorWindowHiddenForPresentation = nil
+        guard let window,
+              NSApplication.shared.windows.contains(where: { $0 === window }) else {
+            return
+        }
+        showEditorWindow(window)
+    }
+
+    private func showEditorWindow() {
+        guard let window = locateEditorWindow() else { return }
+        showEditorWindow(window)
+    }
+
+    private func showEditorWindow(_ window: NSWindow) {
+        editorWindow = window
         NSApplication.shared.activate(ignoringOtherApps: true)
-        NSApplication.shared.windows
-            .first(where: { !($0 is NSPanel) })?
-            .makeKeyAndOrderFront(nil)
+        window.makeKeyAndOrderFront(nil)
     }
 }
