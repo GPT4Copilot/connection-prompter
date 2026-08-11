@@ -707,7 +707,7 @@ git commit -m "feat: hide editor during presentation"
 - Consumes: all completed 1.2.2 behavior.
 - Produces: version `1.2.2`, build `5`, a signed sandboxed arm64 Release app, and a verified ZIP.
 
-- [ ] **Step 1: Update version metadata and documentation**
+- [x] **Step 1: Update version metadata and documentation**
 
 Set both app configurations to:
 
@@ -726,7 +726,7 @@ Update the README title and direct-use path to 1.2.2. Add a V1.2.2 section docum
 - “主持时隐藏编辑页”默认开启；也可取消勾选，保持编辑窗口可见。
 ```
 
-- [ ] **Step 2: Check and commit release metadata**
+- [x] **Step 2: Check and commit release metadata**
 
 ```bash
 git diff --check
@@ -762,13 +762,13 @@ open 'build/DerivedData-122/Build/Products/Debug/Connection Prompter.app'
 
 Hover all four edges and all four corners. Confirm exact system frame-resize cursors on every region, no resize cursor in the content interior, speed-slider dragging does not move the window, and content/background dragging still does.
 
-- [ ] **Step 6: Produce a clean Release build**
+- [x] **Step 6: Produce a clean Release build**
 
 ```bash
 xcodebuild -quiet -project ConnectionPrompter.xcodeproj -scheme ConnectionPrompter -configuration Release -destination 'platform=macOS,arch=arm64' -derivedDataPath build/DerivedData-122 clean build
 ```
 
-- [ ] **Step 7: Copy and zip without overwriting 1.2.1**
+- [x] **Step 7: Copy and zip without overwriting 1.2.1**
 
 First require both checks to exit 0:
 
@@ -784,7 +784,7 @@ ditto 'build/DerivedData-122/Build/Products/Release/Connection Prompter.app' '/U
 ditto -c -k --sequesterRsrc --keepParent '/Users/fois/Documents/ChatGPT/屏幕文字显示APP/dist/Connection Prompter 1.2.2.app' '/Users/fois/Documents/ChatGPT/屏幕文字显示APP/dist/Connection Prompter 1.2.2.zip'
 ```
 
-- [ ] **Step 8: Verify every delivered artifact property**
+- [x] **Step 8: Verify every delivered artifact property**
 
 ```bash
 codesign --verify --deep --strict --verbose=2 '/Users/fois/Documents/ChatGPT/屏幕文字显示APP/dist/Connection Prompter 1.2.2.app'
