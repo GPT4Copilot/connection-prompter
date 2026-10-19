@@ -23,6 +23,7 @@ final class AppState {
     private var autosaveTask: Task<Void, Never>?
     private var autoScrollLineHeight: Double = 1
     private var maximumScrollOffset: Double = 0
+    private var presenterViewportWidth: Double
 
     init(
         store: any SessionStoring,
@@ -51,6 +52,9 @@ final class AppState {
         autoScrollRunning = false
         panelFrame = restored.panelFrame
         presenterVisible = restored.presenterVisible
+        presenterViewportWidth = restored.preferences.peopleView
+            ? restored.preferences.effectiveStyle.panelWidth
+            : restored.panelFrame.width
         pages = []
         prompterTrack = PrompterTrack(lines: [])
         rebuildPages()
@@ -188,10 +192,15 @@ final class AppState {
 
     func setPanelFrame(_ frame: WindowFrame) {
         panelFrame = frame
-        if !preferences.peopleView {
-            rebuildPages()
-        }
+        setPresenterViewportWidth(frame.width)
         scheduleAutosave()
+    }
+
+    func setPresenterViewportWidth(_ width: Double) {
+        let normalizedWidth = max(width, 1)
+        guard normalizedWidth != presenterViewportWidth else { return }
+        presenterViewportWidth = normalizedWidth
+        rebuildPages()
     }
 
     func setScrollMetrics(lineHeight: Double, maximumOffset: Double) {
@@ -289,9 +298,8 @@ final class AppState {
 
     private func rebuildPages() {
         let style = preferences.effectiveStyle
-        let panelWidth = preferences.peopleView ? style.panelWidth : panelFrame.width
         let layout = PrompterLayout(
-            width: max(panelWidth - 72, 1),
+            width: max(presenterViewportWidth - 72, 1),
             fontSize: preferences.fontSize,
             lineHeight: preferences.lineDensity.multiplier,
             maximumLines: style.maximumLines
