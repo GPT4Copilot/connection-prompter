@@ -1,5 +1,19 @@
 import SwiftUI
 
+enum DocumentDeletionPrompt {
+    private static let maximumDocumentNameLength = 36
+
+    static func title(for rawTitle: String) -> String {
+        let normalizedTitle = rawTitle
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+        let documentName = normalizedTitle.isEmpty ? "未命名文稿" : normalizedTitle
+        let visibleName = documentName.prefix(maximumDocumentNameLength)
+        let truncationMark = documentName.count > maximumDocumentNameLength ? "…" : ""
+        return "删除“\(visibleName)\(truncationMark)”？"
+    }
+}
+
 struct DocumentListView: View {
     @Bindable var coordinator: AppCoordinator
     @State private var deleteConfirmationPresented = false
@@ -31,7 +45,7 @@ struct DocumentListView: View {
         .background(Color(nsColor: .controlBackgroundColor))
         .navigationSplitViewColumnWidth(min: 250, ideal: 300, max: 380)
         .confirmationDialog(
-            "删除“\(state.document.title)”？",
+            DocumentDeletionPrompt.title(for: state.document.title),
             isPresented: $deleteConfirmationPresented
         ) {
             Button("删除文稿", role: .destructive) {
