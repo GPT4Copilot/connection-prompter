@@ -32,6 +32,18 @@ final class AppStateTests: XCTestCase {
     }
 
     @MainActor
+    func testPresenterViewportWidthRewrapsPeopleViewTrack() {
+        let state = AppState(store: FileSessionStore(directoryURL: directoryURL))
+        state.updatePreferences { $0.peopleView = true }
+        state.updateContent(String(repeating: "字幕布局需要跟随窗口宽度变化 ", count: 40))
+        let narrowLineCount = state.prompterTrack.lines.count
+
+        state.setPresenterViewportWidth(1_000)
+
+        XCTAssertLessThan(state.prompterTrack.lines.count, narrowLineCount)
+    }
+
+    @MainActor
     func testEditsAreAutosavedAfterDebounce() async throws {
         let store = FileSessionStore(directoryURL: directoryURL)
         let state = AppState(store: store)

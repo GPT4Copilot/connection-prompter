@@ -2,6 +2,24 @@ import XCTest
 @testable import ConnectionPrompter
 
 final class DocumentLibraryTests: XCTestCase {
+    func testDeleteConfirmationTitleCompactsAndLimitsLongMultilineTitle() {
+        let longTitle = "2026-10-20 早读共建\n" + String(repeating: "主持稿完整内容 ", count: 100)
+
+        let prompt = DocumentDeletionPrompt.title(for: longTitle)
+
+        XCTAssertFalse(prompt.contains("\n"))
+        XCTAssertLessThanOrEqual(prompt.count, 42)
+        XCTAssertTrue(prompt.hasPrefix("删除“2026-10-20 早读共建"))
+        XCTAssertTrue(prompt.hasSuffix("…”？"))
+    }
+
+    func testDeleteConfirmationTitleUsesFallbackForWhitespaceOnlyTitle() {
+        XCTAssertEqual(
+            DocumentDeletionPrompt.title(for: " \n\t "),
+            "删除“未命名文稿”？"
+        )
+    }
+
     func testNewLibraryAlwaysHasOneSelectedBlankDocument() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
 

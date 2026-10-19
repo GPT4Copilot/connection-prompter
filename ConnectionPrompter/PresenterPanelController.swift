@@ -249,6 +249,9 @@ final class PresenterPanelController: NSObject, NSWindowDelegate {
     }
 
     func windowDidResize(_ notification: Notification) {
+        if !isApplyingFrame, coordinator.state.preferences.peopleView {
+            coordinator.state.setPresenterViewportWidth(panel.frame.width)
+        }
         recordPanelFrameIfNeeded()
     }
 
@@ -327,6 +330,7 @@ final class PresenterPanelController: NSObject, NSWindowDelegate {
         isApplyingFrame = true
         panel.setFrame(frame, display: true)
         isApplyingFrame = false
+        coordinator.state.setPresenterViewportWidth(frame.width)
     }
 }
 
